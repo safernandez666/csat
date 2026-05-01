@@ -14,6 +14,23 @@ por IA, y un asistente de chat con contexto real de tu postura de seguridad.
 Pensada para equipos de seguridad que quieren una única fuente de verdad
 para compliance sin enviar datos a un SaaS de terceros.
 
+## Capturas
+
+<table>
+  <tr>
+    <td width="50%"><img src="./docs/screenshots/02-dashboard.png" alt="Dashboard con compliance score, status cards y gráficos de postura"/><br/><sub><b>Dashboard</b> — compliance score, distribución de status, madurez por control / IG, spider web</sub></td>
+    <td width="50%"><img src="./docs/screenshots/03-waves.png" alt="Vista Implementation Waves filtrada por IG1"/><br/><sub><b>Implementation Waves</b> — atacá IG1 / IG2 / IG3 una ola a la vez</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="./docs/screenshots/05-control-detail.png" alt="Detalle de control con safeguards y barras de progreso por IG"/><br/><sub><b>Detalle de control</b> — status, owner, timestamps de transición, progreso por IG</sub></td>
+    <td width="50%"><img src="./docs/screenshots/04-quick-wins.png" alt="Quick Wins con recomendaciones ranqueadas"/><br/><sub><b>Quick Wins</b> — top 5 acciones ranqueadas por heurística + LLM</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="./docs/screenshots/06-assistant.png" alt="Asistente de IA con contexto de la postura de la organización"/><br/><sub><b>AI Assistant</b> — chat con tus datos reales de controles, con historial persistente</sub></td>
+    <td width="50%"><img src="./docs/screenshots/01-login.png" alt="Pantalla de login con branding de la empresa"/><br/><sub><b>Login</b> — branded con el logo y nombre de la organización</sub></td>
+  </tr>
+</table>
+
 ## Arquitectura
 
 ```

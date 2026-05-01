@@ -14,6 +14,23 @@ assistant grounded in your real posture data.
 Built for security teams that want a single source of truth for compliance
 without sending data to a third-party SaaS.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="./docs/screenshots/02-dashboard.png" alt="Dashboard with compliance score, status cards, and posture charts"/><br/><sub><b>Dashboard</b> — compliance score, status mix, control / IG maturity, spider web</sub></td>
+    <td width="50%"><img src="./docs/screenshots/03-waves.png" alt="Implementation Waves view filtered by IG1"/><br/><sub><b>Implementation Waves</b> — tackle IG1 / IG2 / IG3 one wave at a time</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="./docs/screenshots/05-control-detail.png" alt="Control detail page with safeguards and IG progress bars"/><br/><sub><b>Control detail</b> — status, owner, transition timestamps, per-IG progress</sub></td>
+    <td width="50%"><img src="./docs/screenshots/04-quick-wins.png" alt="Quick Wins ranked recommendations"/><br/><sub><b>Quick Wins</b> — top 5 actions ranked by heuristic + LLM</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="./docs/screenshots/06-assistant.png" alt="AI Assistant chat grounded in the organization's posture"/><br/><sub><b>AI Assistant</b> — chat grounded in your real control data, with persistent history</sub></td>
+    <td width="50%"><img src="./docs/screenshots/01-login.png" alt="Login screen with company branding"/><br/><sub><b>Login</b> — branded with the customer's logo and platform name</sub></td>
+  </tr>
+</table>
+
 ## Architecture
 
 ```
