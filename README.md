@@ -1,5 +1,11 @@
 # CSAT — CIS Controls Assessment & Tracking
 
+<!-- README-I18N:START -->
+
+**English** | [Español](./README.es.md)
+
+<!-- README-I18N:END -->
+
 Open-source, self-hosted platform for managing **CIS Controls v8** end-to-end:
 implementation status per control and per safeguard, evidence, audit logs,
 PDF/Excel reports with an AI-generated executive summary, and a chat
