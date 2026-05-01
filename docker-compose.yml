@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: csat-backend
+    restart: unless-stopped
+    environment:
+      - CSAT_ENV=${CSAT_ENV:-dev}
+      - DATABASE_URL=sqlite:////app/data/csat.db
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=15
+      - REFRESH_TOKEN_EXPIRE_DAYS=7
+      - CORS_ORIGINS=http://localhost
+      - UPLOAD_DIR=./uploads
+      - SCHEDULER_ENABLED=true
+      - COOKIE_SECURE=${COOKIE_SECURE:-false}
+      - AI_DEFAULT_URL=${AI_DEFAULT_URL:-http://host.docker.internal:11434}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - csat-data:/app/data
+      - csat-uploads:/app/uploads
+    networks:
+      - csat-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build: ./frontend
+    container_name: csat-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - csat-network
+
+volumes:
+  csat-data:
+  csat-uploads:
+
+networks:
+  csat-network:
+    driver: bridge

@@ -1,0 +1,155 @@
+import { useState } from "react";
+import { useControls } from "../hooks/use-api";
+import { Layout } from "../components/layout";
+import { Card, CardContent } from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Select } from "../components/ui/select";
+import { ControlStatusBadge } from "../components/control-status-badge";
+import { RiskBadge } from "../components/risk-badge";
+import { Search, Layers } from "lucide-react";
+import type { Control } from "../types";
+
+const groupColors: Record<string, string> = {
+  Basic: "text-success",
+  Foundational: "text-info",
+  Organizational: "text-purple",
+};
+
+function IgProgressMini({ control }: { control: Control }) {
+  const counts = {
+    ig1: { total: 0, impl: 0 },
+    ig2: { total: 0, impl: 0 },
+    ig3: { total: 0, impl: 0 },
+  };
+  control.safeguards.forEach((sg) => {
+    const k = (sg.ig || "ig1") as keyof typeof counts;
+    if (counts[k]) {
+      counts[k].total += 1;
+      if (sg.implementation_status === "implemented") counts[k].impl += 1;
+    }
+  });
+  const bars = [
+    { key: "ig1" as const, label: "IG1", color: "bg-success" },
+    { key: "ig2" as const, label: "IG2", color: "bg-info" },
+    { key: "ig3" as const, label: "IG3", color: "bg-purple-500" },
+  ];
+  return (
+    <div className="mt-2 flex items-center gap-3">
+      {bars.map((b) => {
+        const c = counts[b.key];
+        const pct = c.total > 0 ? Math.round((c.impl / c.total) * 100) : 0;
+        return (
+          <div key={b.key} className="flex items-center gap-1.5 flex-1 min-w-0">
+            <span className="text-[10px] font-semibold text-muted shrink-0">{b.label}</span>
+            <div className="h-1.5 flex-1 rounded-full bg-border overflow-hidden">
+              <div className={`h-full rounded-full ${b.color} transition-all`} style={{ width: `${pct}%` }} />
+            </div>
+            <span className="text-[10px] text-muted shrink-0">{c.impl}/{c.total}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function ControlsPage() {
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [riskFilter, setRiskFilter] = useState("");
+  const [groupFilter, setGroupFilter] = useState("");
+  const { data, loading, error } = useControls({
+    ...(statusFilter ? { status: statusFilter } : {}),
+    ...(riskFilter ? { risk: riskFilter } : {}),
+  });
+
+  const filtered = (data || []).filter((c) => {
+    const q = search.toLowerCase();
+    const matchesSearch =
+      c.name.toLowerCase().includes(q) ||
+      c.cis_id.toLowerCase().includes(q) ||
+      (c.objective || "").toLowerCase().includes(q);
+    const matchesGroup = groupFilter ? c.group === groupFilter : true;
+    return matchesSearch && matchesGroup;
+  });
+
+  return (
+    <Layout title="CIS Controls" subtitle="Manage CIS Controls v8">
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
+              <Input
+                placeholder="Search controls..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-40">
+                <option value="">All Statuses</option>
+                <option value="not_implemented">Not Implemented</option>
+                <option value="in_progress">In Progress</option>
+                <option value="implemented">Implemented</option>
+                <option value="needs_review">Needs Review</option>
+              </Select>
+              <Select value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)} className="w-40">
+                <option value="">All Risks</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </Select>
+              <Select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} className="w-44">
+                <option value="">All Groups</option>
+                <option value="Basic">Basic (1-6)</option>
+                <option value="Foundational">Foundational (7-16)</option>
+                <option value="Organizational">Organizational (17-18)</option>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {loading && <p className="text-center text-muted py-8">Loading controls...</p>}
+      {error && <p className="text-center text-danger py-8">{error}</p>}
+
+      <div className="space-y-3">
+        {filtered.map((control) => (
+          <a
+            key={control.id}
+            href={`/controls/${control.id}`}
+            className="block rounded-xl border border-border bg-card/95 p-5 shadow-sm transition-colors hover:border-accent/30 hover:bg-card"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="text-xs font-mono text-muted">CIS {control.cis_id}</span>
+                  <ControlStatusBadge status={control.status} />
+                  <RiskBadge risk={control.risk_level} />
+                  <span className={`inline-flex items-center gap-1 text-xs font-semibold ${groupColors[control.group] || "text-muted"}`}>
+                    <Layers className="h-3 w-3" />
+                    {control.group}
+                  </span>
+                </div>
+                <h3 className="text-sm font-semibold truncate">{control.name}</h3>
+                {control.objective && (
+                  <p className="mt-1 text-xs text-muted line-clamp-2">{control.objective}</p>
+                )}
+                <IgProgressMini control={control} />
+              </div>
+              <div className="text-right text-xs text-muted shrink-0">
+                <div>{control.safeguards.length} safeguards</div>
+                {control.owner_name && <div>Owner: {control.owner_name}</div>}
+              </div>
+            </div>
+          </a>
+        ))}
+        {!loading && filtered.length === 0 && (
+          <p className="text-center text-muted py-8">No controls found.</p>
+        )}
+      </div>
+    </Layout>
+  );
+}
