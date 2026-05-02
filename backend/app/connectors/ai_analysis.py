@@ -1,8 +1,17 @@
 import json
+import urllib.error
 import urllib.request
 from typing import Any, Dict, List
 
 from app.connectors.base import BaseConnector
+
+
+class AIProviderError(Exception):
+    """Raised when an upstream AI provider returns an error we can describe."""
+
+    def __init__(self, message: str, status: int | None = None):
+        super().__init__(message)
+        self.status = status
 
 
 class AIAnalysisConnector(BaseConnector):
@@ -31,9 +40,30 @@ class AIAnalysisConnector(BaseConnector):
             body["format"] = "json"
         payload = json.dumps(body).encode()
         req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            data = json.loads(resp.read().decode())
-            return data.get("message", {}).get("content", "")
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                data = json.loads(resp.read().decode())
+                return data.get("message", {}).get("content", "")
+        except urllib.error.HTTPError as e:
+            detail = ""
+            try:
+                detail = e.read().decode("utf-8", errors="replace")
+            except Exception:
+                pass
+            if e.code == 404 or "not found" in detail.lower():
+                raise AIProviderError(
+                    f"Model '{self.model}' is not installed in Ollama at {self.api_url}. "
+                    f"Run `ollama pull {self.model}` or pick a model that is already pulled.",
+                    status=e.code,
+                ) from e
+            raise AIProviderError(
+                f"Ollama returned HTTP {e.code}: {detail.strip() or e.reason}",
+                status=e.code,
+            ) from e
+        except urllib.error.URLError as e:
+            raise AIProviderError(
+                f"Cannot reach Ollama at {self.api_url}: {e.reason}"
+            ) from e
 
     def _call_openai(self, messages: List[Dict[str, str]], force_json: bool = False) -> str:
         url = f"{self.api_url}/v1/chat/completions"

@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_admin, require_viewer
-from app.connectors.ai_analysis import AIAnalysisConnector
+from app.connectors.ai_analysis import AIAnalysisConnector, AIProviderError
 from app.core.logging import logger
 from app.core.security import get_current_user
 from app.models.control import Control, Safeguard
@@ -177,8 +177,11 @@ def chat(req: ChatRequest, db: Session = Depends(get_db), current_user: User = D
 
     try:
         reply = conn.chat(messages)
-    except Exception as e:
+    except AIProviderError as e:
         raise HTTPException(status_code=502, detail=str(e))
+    except Exception as e:
+        logger.exception("ai_chat_failed")
+        raise HTTPException(status_code=502, detail=f"AI provider error: {e}")
 
     # Post-filter: local LLMs sometimes ignore system prompts. If the reply contains
     # code blocks (triple backticks), treat it as off-topic and replace with refusal.
