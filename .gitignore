@@ -53,6 +53,9 @@ Thumbs.db
 *.swp
 *.swo
 
+# Claude Code local config
+.claude/
+
 # Test runner / coverage
 .coverage
 htmlcov/
