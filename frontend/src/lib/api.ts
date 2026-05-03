@@ -160,7 +160,11 @@ export const api = {
   updateAiConfig: (data: Record<string, any>) =>
     fetchJson<Record<string, any>>("/api/ai/config", { method: "PUT", body: JSON.stringify(data) }),
 
-  aiHealth: () => fetchJson<Record<string, any>>("/api/ai/health", { method: "POST" }),
+  aiHealth: (overrides?: Record<string, any>) =>
+    fetchJson<Record<string, any>>("/api/ai/health", {
+      method: "POST",
+      body: overrides ? JSON.stringify(overrides) : undefined,
+    }),
 
   aiChat: (message: string) =>
     fetchJson<{ reply: string }>("/api/ai/chat", { method: "POST", body: JSON.stringify({ message }) }),
@@ -174,6 +178,15 @@ export const api = {
     fetchJson<{ deleted: number }>("/api/ai/chat/history", { method: "DELETE" }),
 
   aiQuickWins: () => fetchJson<{ candidates: any[]; ai_analysis: any }>("/api/ai/quick-wins"),
+
+  evaluateEvidence: (evidenceId: number) =>
+    fetchJson<{
+      verdict: "sufficient" | "partial" | "insufficient";
+      reasoning: string;
+      gaps: string[];
+      recommendations: string[];
+      extracted_chars: number;
+    }>(`/api/ai/evaluate-evidence/${evidenceId}`, { method: "POST" }),
 
   uploadLogo: (file: File) => {
     const formData = new FormData();

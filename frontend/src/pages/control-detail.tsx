@@ -10,7 +10,8 @@ import { Input } from "../components/ui/input";
 import { Select } from "../components/ui/select";
 import { api } from "../lib/api";
 import { formatDate } from "../lib/utils";
-import { FileText, ExternalLink, Trash2, MessageSquare, Send, Pencil, Check, X } from "lucide-react";
+import { FileText, ExternalLink, Trash2, MessageSquare, Send, Pencil, Check, X, Sparkles, AlertCircle, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Spinner } from "../components/ui/spinner";
 
 export default function ControlDetailPage() {
   const { id } = useParams();
@@ -28,6 +29,34 @@ export default function ControlDetailPage() {
     due_date: "",
     review_date: "",
   });
+  const [analyzingId, setAnalyzingId] = useState<number | null>(null);
+  const [verdicts, setVerdicts] = useState<Record<number, {
+    verdict: "sufficient" | "partial" | "insufficient";
+    reasoning: string;
+    gaps: string[];
+    recommendations: string[];
+    error?: string;
+  }>>({});
+
+  const handleAnalyzeEvidence = async (evId: number) => {
+    setAnalyzingId(evId);
+    setVerdicts((prev) => {
+      const next = { ...prev };
+      delete next[evId];
+      return next;
+    });
+    try {
+      const res = await api.evaluateEvidence(evId);
+      setVerdicts((prev) => ({ ...prev, [evId]: res }));
+    } catch (e: any) {
+      setVerdicts((prev) => ({
+        ...prev,
+        [evId]: { verdict: "insufficient", reasoning: "", gaps: [], recommendations: [], error: e.message || "Analysis failed" },
+      }));
+    } finally {
+      setAnalyzingId(null);
+    }
+  };
 
   // Keep editForm in sync with the control while the user is NOT editing.
   // Otherwise an in-flight safeguard change (which auto-recomputes control.status)
@@ -239,31 +268,97 @@ export default function ControlDetailPage() {
             <EvidenceUploader controlId={controlId} onUploaded={refreshEvidence} />
             <div className="space-y-2">
               {evLoading && <p className="text-sm text-muted">Loading evidence...</p>}
-              {evidence?.map((ev) => (
-                <div key={ev.id} className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-accent" />
-                      <span className="text-sm font-medium">{ev.file_name || "Note"}</span>
-                      {ev.external_link && (
-                        <a href={ev.external_link} target="_blank" rel="noreferrer" className="text-accent hover:underline">
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      )}
+              {evidence?.map((ev) => {
+                const v = verdicts[ev.id];
+                const verdictTone = v && !v.error
+                  ? v.verdict === "sufficient" ? "border-success bg-success-dim text-success"
+                    : v.verdict === "partial" ? "border-warning bg-warning-dim text-warning"
+                    : "border-danger bg-danger-dim text-danger"
+                  : "";
+                const VerdictIcon = v && !v.error
+                  ? v.verdict === "sufficient" ? CheckCircle2
+                    : v.verdict === "partial" ? AlertTriangle
+                    : AlertCircle
+                  : AlertCircle;
+                return (
+                  <div key={ev.id} className="rounded-lg border border-border">
+                    <div className="flex items-center justify-between p-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <FileText className="size-4 text-accent" />
+                          <span className="text-sm font-medium">{ev.file_name || "Note"}</span>
+                          {ev.external_link && (
+                            <a href={ev.external_link} target="_blank" rel="noreferrer" className="text-accent hover:underline">
+                              <ExternalLink className="size-3" />
+                            </a>
+                          )}
+                        </div>
+                        {ev.note && <p className="text-xs text-muted mt-1">{ev.note}</p>}
+                        <div className="text-xs text-muted mt-1">
+                          by {ev.uploader_name} • {formatDate(ev.created_at)}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {ev.file_name && (
+                          <button
+                            onClick={() => handleAnalyzeEvidence(ev.id)}
+                            disabled={analyzingId !== null}
+                            title="Analyze evidence with the configured AI provider (content is sent to whichever provider you set in Settings → AI)"
+                            className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-accent hover:bg-accent/10 disabled:opacity-50"
+                          >
+                            {analyzingId === ev.id ? (
+                              <Spinner size="sm" className="size-3" />
+                            ) : (
+                              <Sparkles className="size-3" />
+                            )}
+                            {analyzingId === ev.id ? "Analyzing..." : "Analyze"}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteEvidence(ev.id)}
+                          className="rounded-lg p-2 text-danger hover:bg-danger-dim"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
                     </div>
-                    {ev.note && <p className="text-xs text-muted mt-1">{ev.note}</p>}
-                    <div className="text-xs text-muted mt-1">
-                      by {ev.uploader_name} • {formatDate(ev.created_at)}
-                    </div>
+                    {v && (
+                      <div className={`border-t border-border p-3 ${v.error ? "" : ""}`}>
+                        {v.error ? (
+                          <div className="flex items-start gap-2 text-xs text-danger">
+                            <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                            <span>{v.error}</span>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${verdictTone}`}>
+                              <VerdictIcon className="size-3" />
+                              {v.verdict.toUpperCase()}
+                            </div>
+                            {v.reasoning && <p className="text-xs leading-relaxed">{v.reasoning}</p>}
+                            {v.gaps.length > 0 && (
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">Gaps</p>
+                                <ul className="mt-1 list-disc pl-4 text-xs space-y-0.5">
+                                  {v.gaps.map((g, i) => <li key={i}>{g}</li>)}
+                                </ul>
+                              </div>
+                            )}
+                            {v.recommendations.length > 0 && (
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">Recommendations</p>
+                                <ul className="mt-1 list-disc pl-4 text-xs space-y-0.5">
+                                  {v.recommendations.map((r, i) => <li key={i}>{r}</li>)}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <button
-                    onClick={() => handleDeleteEvidence(ev.id)}
-                    className="rounded-lg p-2 hover:bg-danger-dim text-danger"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
+                );
+              })}
               {!evLoading && evidence?.length === 0 && (
                 <p className="text-sm text-muted">No evidence yet.</p>
               )}

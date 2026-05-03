@@ -204,7 +204,8 @@ export default function SettingsPage() {
   const testAiConnection = async () => {
     setTestingAi(true);
     try {
-      const res = await api.aiHealth();
+      // Pass the in-flight form values so users can verify before saving.
+      const res = await api.aiHealth(aiConfig);
       setAiHealth(res);
     } catch (e: any) {
       setAiHealth({ status: "error", detail: e.message });
@@ -370,20 +371,24 @@ export default function SettingsPage() {
                     let model = aiConfig.model;
                     if (provider === "openai") {
                       api_url = "https://api.openai.com";
-                      model = "gpt-4";
+                      model = "gpt-4o-mini";
                     } else if (provider === "anthropic") {
                       api_url = "https://api.anthropic.com";
-                      model = "claude-3-sonnet-20240229";
+                      model = "claude-haiku-4-5-20251001";
+                    } else if (provider === "openrouter") {
+                      api_url = "https://openrouter.ai/api";
+                      model = "meta-llama/llama-3.3-70b-instruct:free";
                     } else if (provider === "ollama") {
-                      api_url = "http://localhost:11434";
+                      api_url = "http://host.docker.internal:11434";
                       model = "llama3:latest";
                     }
                     setAiConfig({ ...aiConfig, provider, api_url, model });
                   }}
                 >
-                  <option value="ollama">Ollama (Local)</option>
+                  <option value="openrouter">OpenRouter (multi-model gateway, free tier available)</option>
                   <option value="openai">OpenAI</option>
                   <option value="anthropic">Anthropic</option>
+                  <option value="ollama">Ollama (external, self-hosted)</option>
                 </Select>
               </div>
               {aiConfig.provider === "ollama" && (
@@ -403,7 +408,15 @@ export default function SettingsPage() {
                     type="password"
                     value={aiConfig.api_key}
                     onChange={(e) => setAiConfig({ ...aiConfig, api_key: e.target.value })}
-                    placeholder={aiConfig.provider === "openai" ? "sk-..." : "sk-ant-..."}
+                    placeholder={
+                      aiConfig.provider === "openai"
+                        ? "sk-..."
+                        : aiConfig.provider === "anthropic"
+                        ? "sk-ant-..."
+                        : aiConfig.provider === "openrouter"
+                        ? "sk-or-..."
+                        : ""
+                    }
                   />
                 </div>
               )}
@@ -414,9 +427,11 @@ export default function SettingsPage() {
                   onChange={(e) => setAiConfig({ ...aiConfig, model: e.target.value })}
                   placeholder={
                     aiConfig.provider === "openai"
-                      ? "gpt-4"
+                      ? "gpt-4o-mini"
                       : aiConfig.provider === "anthropic"
-                      ? "claude-3-sonnet"
+                      ? "claude-haiku-4-5-20251001"
+                      : aiConfig.provider === "openrouter"
+                      ? "meta-llama/llama-3.3-70b-instruct:free"
                       : "llama3:latest"
                   }
                 />
@@ -425,7 +440,9 @@ export default function SettingsPage() {
             <div className="mt-4 flex items-center justify-between">
               <p className="text-xs text-muted">
                 {aiConfig.provider === "ollama"
-                  ? "Set your Ollama URL. From Docker, use http://host.docker.internal:11434 (Ollama running on the host) or http://<lan-ip>:11434."
+                  ? "Set your Ollama URL. From Docker, use http://host.docker.internal:11434 (Ollama on the host) or http://<lan-ip>:11434."
+                  : aiConfig.provider === "openrouter"
+                  ? "Aggregator of many models incl. free tier. Get a key at https://openrouter.ai. Try meta-llama/llama-3.3-70b-instruct:free or google/gemini-2.0-flash-exp:free."
                   : aiConfig.provider === "openai"
                   ? "Uses https://api.openai.com. Only your API Key is needed."
                   : "Uses https://api.anthropic.com. Only your API Key is needed."}

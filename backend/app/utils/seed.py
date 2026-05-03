@@ -1,3 +1,5 @@
+import os
+
 from sqlalchemy.orm import Session
 from app.core.security import hash_password
 from app.models.user import User, Role
@@ -443,9 +445,9 @@ def seed_database(db: Session):
         "language": "en",
         "ai_config": {
             "provider": "ollama",
-            "api_url": "http://localhost:11434",
+            "api_url": os.environ.get("AI_DEFAULT_URL", "http://localhost:11434"),
             "api_key": "",
-            "model": "llama3:latest",
+            "model": os.environ.get("AI_DEFAULT_MODEL", "llama3.2:3b"),
         },
     }
     for key, value in defaults.items():
