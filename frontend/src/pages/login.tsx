@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShieldCheck, Eye, EyeOff } from "lucide-react";
+import { ShieldCheck, Eye, EyeOff, Building2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { ParticlesBackground } from "../components/particles-background";
@@ -13,7 +13,12 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [publicSettings, setPublicSettings] = useState<{ platform_name?: string; company_logo_url?: string | null; is_dev?: boolean }>({});
+  const [publicSettings, setPublicSettings] = useState<{
+    platform_name?: string;
+    company_logo_url?: string | null;
+    is_dev?: boolean;
+    oidc_enabled?: boolean;
+  }>({});
 
   useEffect(() => {
     api.getPublicSettings().then(setPublicSettings).catch(() => {});
@@ -52,6 +57,32 @@ export default function LoginPage() {
             <p className="text-sm text-muted">{t("login.subtitle")}</p>
           </div>
         </div>
+
+        {publicSettings.oidc_enabled && (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                window.location.href = "/api/auth/oidc/login";
+              }}
+            >
+              <Building2 className="h-4 w-4 mr-2" />
+              {t("login.sso")}
+            </Button>
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-background px-2 text-muted">
+                  {t("login.or")}
+                </span>
+              </div>
+            </div>
+          </>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

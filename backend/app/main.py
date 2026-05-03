@@ -15,7 +15,7 @@ from app.models.settings import Setting
 from app.models.user import User
 from app.utils.seed import seed_database
 from app.services.scheduler import init_scheduler, shutdown_scheduler
-from app.api import auth, users, controls, evidence, comments, audit_logs, dashboard, reports, settings as settings_api, ai
+from app.api import auth, users, controls, evidence, comments, audit_logs, dashboard, reports, settings as settings_api, ai, oidc
 from app.api.deps import get_db
 
 
@@ -50,6 +50,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(oidc.router)
 app.include_router(users.router)
 app.include_router(controls.router)
 app.include_router(evidence.router)

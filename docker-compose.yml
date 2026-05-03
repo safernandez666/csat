@@ -42,9 +42,37 @@ services:
     networks:
       - csat-network
 
+  # Optional: Keycloak as the SSO IdP for development and demos.
+  # Start it with the `sso` profile:   docker compose --profile sso up -d
+  # Skip it entirely for plain CSAT:   docker compose up -d
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: csat-keycloak
+    restart: unless-stopped
+    profiles: ["sso"]
+    command: ["start-dev"]
+    environment:
+      - KC_BOOTSTRAP_ADMIN_USERNAME=${KEYCLOAK_ADMIN:-admin}
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      - KC_HTTP_ENABLED=true
+      # Public URL the browser uses. host.docker.internal works out of the box
+      # on Docker Desktop (mac/win) and on Linux thanks to the extra_hosts entry.
+      - KC_HOSTNAME=${KEYCLOAK_PUBLIC_URL:-http://host.docker.internal:8081}
+      - KC_HOSTNAME_STRICT=false
+      - KC_HEALTH_ENABLED=true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8081:8080"
+    volumes:
+      - csat-keycloak-data:/opt/keycloak/data
+    networks:
+      - csat-network
+
 volumes:
   csat-data:
   csat-uploads:
+  csat-keycloak-data:
 
 networks:
   csat-network:

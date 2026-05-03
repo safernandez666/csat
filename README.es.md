@@ -196,6 +196,79 @@ Click en **Test Connection**. Tenés que recibir `{"status":"ok"}`.
 
 ---
 
+## Single Sign-On (Keycloak, AD via federación)
+
+CSAT soporta SSO via OIDC con Authorization Code Flow + PKCE. Keycloak está
+incluido en `docker-compose.yml` bajo el profile opcional `sso`, así que
+queda fuera del camino salvo que lo prendas explícitamente.
+
+### Demo local con Keycloak (5 minutos)
+
+```bash
+# 1. Levantá Keycloak junto a CSAT
+docker compose --profile sso up -d
+
+# 2. Seedeá realm, client, cuatro grupos (csat-admins/analysts/auditors/viewers)
+#    y dos usuarios de prueba (alice → admin, bob → analyst). Idempotente.
+scripts/seed-keycloak.py
+
+# El script imprime el client secret. Guardalo para el próximo paso.
+```
+
+La consola de admin de Keycloak está en `http://localhost:8081` (admin/admin).
+
+### Conectarlo con CSAT
+
+Desde la UI de admin, o vía API:
+
+```bash
+curl -b cookies.txt -X PUT http://localhost/api/settings/oidc_config \
+  -H "Content-Type: application/json" -d '{
+    "value": {
+      "enabled": true,
+      "issuer_url": "http://host.docker.internal:8081/realms/csat",
+      "client_id": "csat-app",
+      "client_secret": "<el secret que imprime seed-keycloak.py>",
+      "group_role_map": {
+        "csat-admins":   "Admin",
+        "csat-analysts": "Security Analyst",
+        "csat-auditors": "Auditor",
+        "csat-viewers":  "Viewer"
+      },
+      "default_role": "Viewer"
+    }
+  }'
+```
+
+Recargá `/login` — aparece un botón **Sign in with corporate SSO**. Iniciá
+sesión con `alice / Test123!` (mapeada a `csat-admins` → Admin) o
+`bob / Test123!` (mapeada a `csat-analysts` → Security Analyst). El user se
+crea on-the-fly en la tabla `users` en el primer login; los logins siguientes
+actualizan sus roles según lo que diga el IdP.
+
+### Conectar un Active Directory existente
+
+Mismo flujo OIDC — Keycloak federa LDAP / AD nativamente. En la consola de
+Keycloak: **User Federation → Add provider → ldap**, apuntá al DC, configurá
+bind DN y search base, y activá group sync. Mapeá los grupos AD que querés
+exponer como `csat-admins` / `csat-analysts` / etc. CSAT no cambia.
+
+El mismo patrón sirve para **Entra ID (Azure AD)**, **Okta**, **ADFS** o
+cualquier IdP OIDC — ajustá `issuer_url`, `client_id` y `client_secret`. El
+groups claim debe estar presente en el ID token o en la respuesta de
+userinfo, con un entry por cada grupo del usuario.
+
+### Checklist de producción
+
+- Keycloak detrás de HTTPS, con `KC_HOSTNAME` apuntando a la URL pública.
+- Generá un client secret nuevo por deployment, nunca reuses el de la demo.
+- Restringí el redirect URI en el IdP solo a la URL real de CSAT.
+- `default_role` cuidado: le otorga ese rol a cualquier user del IdP que no
+  matchee ningún grupo. Poné `null` si preferís denegar.
+- Una vez que SSO funciona, rotá / desactivá la cuenta local `admin@csat.local`.
+
+---
+
 ## Backup, restore y reset
 
 Los scripts viven en `scripts/`.

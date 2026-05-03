@@ -103,6 +103,8 @@ const en: Dict = {
   "login.submitting": "Signing in...",
   "login.demo_credentials": "Demo Credentials",
   "login.invalid_credentials": "Invalid email or password",
+  "login.sso": "Sign in with corporate SSO",
+  "login.or": "or sign in with email",
 
   // Dashboard
   "dashboard.title": "Dashboard",
@@ -443,6 +445,8 @@ const es: Dict = {
   "login.submitting": "Ingresando...",
   "login.demo_credentials": "Credenciales de demo",
   "login.invalid_credentials": "Email o contraseña inválidos",
+  "login.sso": "Iniciar sesión con SSO corporativo",
+  "login.or": "o iniciá sesión con email",
 
   // Dashboard
   "dashboard.title": "Tablero",
@@ -783,6 +787,8 @@ const pt: Dict = {
   "login.submitting": "Entrando...",
   "login.demo_credentials": "Credenciais de demo",
   "login.invalid_credentials": "Email ou senha inválidos",
+  "login.sso": "Entrar com SSO corporativo",
+  "login.or": "ou entre com email",
 
   // Dashboard
   "dashboard.title": "Painel",

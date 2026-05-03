@@ -33,10 +33,18 @@ def get_public_settings(db: Session = Depends(get_db)):
     rewrite it to the public /api/branding/logo endpoint so an unauthenticated
     <img> on the login page can resolve it.
     """
-    items = db.query(Setting).filter(Setting.key.in_(["platform_name", "company_logo_url"])).all()
+    items = db.query(Setting).filter(
+        Setting.key.in_(["platform_name", "company_logo_url", "oidc_config"])
+    ).all()
     result: dict = {s.key: s.value for s in items}
     if result.get("company_logo_url"):
         result["company_logo_url"] = "/api/branding/logo"
+    # Surface SSO availability without leaking the client secret. Anyone hitting
+    # /login needs to know whether to render the "Sign in with SSO" button.
+    oidc = result.pop("oidc_config", None) or {}
+    result["oidc_enabled"] = bool(
+        oidc.get("enabled") and oidc.get("issuer_url") and oidc.get("client_id") and oidc.get("client_secret")
+    )
     # Exposed so the login screen can hide demo credentials in non-dev deployments
     result["is_dev"] = settings.is_dev
     return result

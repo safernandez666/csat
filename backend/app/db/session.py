@@ -18,6 +18,9 @@ _ADDITIVE_MIGRATIONS = {
         "started_at": "DATETIME",
         "implemented_at": "DATETIME",
     },
+    "users": {
+        "external_id": "VARCHAR",
+    },
 }
 
 
