@@ -34,9 +34,11 @@ def get_public_settings(db: Session = Depends(get_db)):
     <img> on the login page can resolve it.
     """
     items = db.query(Setting).filter(Setting.key.in_(["platform_name", "company_logo_url"])).all()
-    result = {s.key: s.value for s in items}
+    result: dict = {s.key: s.value for s in items}
     if result.get("company_logo_url"):
         result["company_logo_url"] = "/api/branding/logo"
+    # Exposed so the login screen can hide demo credentials in non-dev deployments
+    result["is_dev"] = settings.is_dev
     return result
 
 

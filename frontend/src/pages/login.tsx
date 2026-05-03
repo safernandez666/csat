@@ -11,7 +11,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [publicSettings, setPublicSettings] = useState<{ platform_name?: string; company_logo_url?: string | null }>({});
+  const [publicSettings, setPublicSettings] = useState<{ platform_name?: string; company_logo_url?: string | null; is_dev?: boolean }>({});
 
   useEffect(() => {
     api.getPublicSettings().then(setPublicSettings).catch(() => {});
@@ -89,11 +89,13 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <div className="rounded-lg border border-border bg-card/50 p-3 text-xs text-muted space-y-1">
-          <p className="font-semibold text-foreground">Demo credentials</p>
-          <p>admin@csat.local / Admin123!</p>
-          <p>analyst@csat.local / Analyst123!</p>
-        </div>
+        {publicSettings.is_dev && (
+          <div className="rounded-lg border border-border bg-card/50 p-3 text-xs text-muted space-y-1">
+            <p className="font-semibold text-foreground">Demo credentials</p>
+            <p>admin@csat.local / Admin123!</p>
+            <p>analyst@csat.local / Analyst123!</p>
+          </div>
+        )}
       </div>
     </div>
   );
