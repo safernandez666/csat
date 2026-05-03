@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "../App";
 import { useControl, useEvidence, useComments } from "../hooks/use-api";
 import { Layout } from "../components/layout";
@@ -12,11 +12,15 @@ import { api } from "../lib/api";
 import { formatDate } from "../lib/utils";
 import { FileText, ExternalLink, Trash2, MessageSquare, Send, Pencil, Check, X, Sparkles, AlertCircle, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Spinner } from "../components/ui/spinner";
+import { useTranslation } from "../hooks/use-translation";
+import { localizeControl } from "../lib/cis-catalog-i18n";
 
 export default function ControlDetailPage() {
+  const { t, lang } = useTranslation();
   const { id } = useParams();
   const controlId = Number(id);
-  const { data: control, loading: controlLoading, refresh: refreshControl, setData: setControlData } = useControl(controlId);
+  const { data: rawControl, loading: controlLoading, refresh: refreshControl, setData: setControlData } = useControl(controlId);
+  const control = useMemo(() => (rawControl ? localizeControl(rawControl, lang) : null), [rawControl, lang]);
   const { data: evidence, loading: evLoading, refresh: refreshEvidence } = useEvidence(controlId);
   const { data: comments, loading: comLoading, refresh: refreshComments } = useComments(controlId);
   const [newComment, setNewComment] = useState("");
@@ -111,23 +115,23 @@ export default function ControlDetailPage() {
   };
 
   const handleDeleteEvidence = async (evId: number) => {
-    if (!confirm("Delete this evidence?")) return;
+    if (!confirm(t("control_detail.delete_confirm"))) return;
     await api.deleteEvidence(evId);
     refreshEvidence();
   };
 
   if (!control && controlLoading) {
     return (
-      <Layout title="Control Detail">
-        <p className="text-center text-muted py-8">Loading...</p>
+      <Layout title={t("nav.controls")}>
+        <p className="text-center text-muted py-8">{t("common.loading")}</p>
       </Layout>
     );
   }
 
   if (!control) {
     return (
-      <Layout title="Control Detail">
-        <p className="text-center text-muted py-8">Control not found.</p>
+      <Layout title={t("nav.controls")}>
+        <p className="text-center text-muted py-8">{t("control_detail.not_found")}</p>
       </Layout>
     );
   }
@@ -137,7 +141,7 @@ export default function ControlDetailPage() {
       {controlLoading && (
         <div className="mb-4 flex items-center gap-2 text-xs text-muted animate-pulse">
           <div className="h-1.5 w-1.5 rounded-full bg-accent" />
-          Refreshing data...
+          {t("control_detail.refreshing")}
         </div>
       )}
       {control.objective && (
@@ -149,19 +153,19 @@ export default function ControlDetailPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <Pencil className="h-4 w-4 text-muted" />
-              Control Settings
+              {t("control_detail.settings_card")}
             </CardTitle>
             {!editing ? (
               <Button size="sm" variant="outline" onClick={startEdit}>
-                Edit
+                {t("common.edit")}
               </Button>
             ) : (
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" onClick={() => setEditing(false)}>
-                  <X className="h-4 w-4 mr-1" /> Cancel
+                  <X className="h-4 w-4 mr-1" /> {t("common.cancel")}
                 </Button>
                 <Button size="sm" onClick={handleSave} disabled={saving}>
-                  <Check className="h-4 w-4 mr-1" /> {saving ? "Saving..." : "Save"}
+                  <Check className="h-4 w-4 mr-1" /> {saving ? t("common.saving") : t("common.save")}
                 </Button>
               </div>
             )}
@@ -171,19 +175,19 @@ export default function ControlDetailPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-sm">
                   <div>
-                    <span className="text-muted">Status</span>
-                    <div className="font-semibold capitalize">{control.status.replace(/_/g, " ")}</div>
+                    <span className="text-muted">{t("control_detail.status")}</span>
+                    <div className="font-semibold capitalize">{t(`status.${control.status}.long`)}</div>
                   </div>
                   <div>
-                    <span className="text-muted">Risk Level</span>
-                    <div className="font-semibold capitalize">{control.risk_level}</div>
+                    <span className="text-muted">{t("control_detail.risk_level")}</span>
+                    <div className="font-semibold capitalize">{t(`risk.${control.risk_level}`)}</div>
                   </div>
                   <div>
-                    <span className="text-muted">Due Date</span>
+                    <span className="text-muted">{t("control_detail.due_date")}</span>
                     <div className="font-semibold">{control.due_date || "—"}</div>
                   </div>
                   <div>
-                    <span className="text-muted">Review Date</span>
+                    <span className="text-muted">{t("control_detail.review_date")}</span>
                     <div className="font-semibold">{control.review_date || "—"}</div>
                   </div>
                 </div>
@@ -191,13 +195,13 @@ export default function ControlDetailPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm pt-3 border-t border-border">
                     {control.started_at && (
                       <div>
-                        <span className="text-muted">Started</span>
+                        <span className="text-muted">{t("control_detail.started")}</span>
                         <div className="font-semibold">{formatDate(control.started_at)}</div>
                       </div>
                     )}
                     {control.implemented_at && (
                       <div>
-                        <span className="text-muted">Implemented</span>
+                        <span className="text-muted">{t("control_detail.implemented_at")}</span>
                         <div className="font-semibold text-success">{formatDate(control.implemented_at)}</div>
                       </div>
                     )}
@@ -207,31 +211,31 @@ export default function ControlDetailPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Status</label>
+                  <label className="block text-xs font-medium text-muted mb-1">{t("control_detail.status")}</label>
                   <Select
                     value={editForm.status}
                     onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
                   >
-                    <option value="not_implemented">Not Implemented</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="implemented">Implemented</option>
-                    <option value="needs_review">Needs Review</option>
+                    <option value="not_implemented">{t("status.not_implemented.long")}</option>
+                    <option value="in_progress">{t("status.in_progress.long")}</option>
+                    <option value="implemented">{t("status.implemented.long")}</option>
+                    <option value="needs_review">{t("status.needs_review.long")}</option>
                   </Select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Risk Level</label>
+                  <label className="block text-xs font-medium text-muted mb-1">{t("control_detail.risk_level")}</label>
                   <Select
                     value={editForm.risk_level}
                     onChange={(e) => setEditForm({ ...editForm, risk_level: e.target.value })}
                   >
-                    <option value="critical">Critical</option>
-                    <option value="high">High</option>
-                    <option value="medium">Medium</option>
-                    <option value="low">Low</option>
+                    <option value="critical">{t("risk.critical")}</option>
+                    <option value="high">{t("risk.high")}</option>
+                    <option value="medium">{t("risk.medium")}</option>
+                    <option value="low">{t("risk.low")}</option>
                   </Select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Due Date</label>
+                  <label className="block text-xs font-medium text-muted mb-1">{t("control_detail.due_date")}</label>
                   <Input
                     type="date"
                     value={editForm.due_date}
@@ -239,7 +243,7 @@ export default function ControlDetailPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Review Date</label>
+                  <label className="block text-xs font-medium text-muted mb-1">{t("control_detail.review_date")}</label>
                   <Input
                     type="date"
                     value={editForm.review_date}
@@ -261,13 +265,13 @@ export default function ControlDetailPage() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <FileText className="h-4 w-4 text-muted" />
-              Evidence
+              {t("control_detail.evidence")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <EvidenceUploader controlId={controlId} onUploaded={refreshEvidence} />
             <div className="space-y-2">
-              {evLoading && <p className="text-sm text-muted">Loading evidence...</p>}
+              {evLoading && <p className="text-sm text-muted">{t("control_detail.evidence_loading")}</p>}
               {evidence?.map((ev) => {
                 const v = verdicts[ev.id];
                 const verdictTone = v && !v.error
@@ -303,7 +307,7 @@ export default function ControlDetailPage() {
                           <button
                             onClick={() => handleAnalyzeEvidence(ev.id)}
                             disabled={analyzingId !== null}
-                            title="Analyze evidence with the configured AI provider (content is sent to whichever provider you set in Settings → AI)"
+                            title={t("control_detail.analyze_tooltip")}
                             className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-accent hover:bg-accent/10 disabled:opacity-50"
                           >
                             {analyzingId === ev.id ? (
@@ -311,7 +315,7 @@ export default function ControlDetailPage() {
                             ) : (
                               <Sparkles className="size-3" />
                             )}
-                            {analyzingId === ev.id ? "Analyzing..." : "Analyze"}
+                            {analyzingId === ev.id ? t("control_detail.analyzing") : t("control_detail.analyze")}
                           </button>
                         )}
                         <button
@@ -338,7 +342,7 @@ export default function ControlDetailPage() {
                             {v.reasoning && <p className="text-xs leading-relaxed">{v.reasoning}</p>}
                             {v.gaps.length > 0 && (
                               <div>
-                                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">Gaps</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">{t("control_detail.gaps")}</p>
                                 <ul className="mt-1 list-disc pl-4 text-xs space-y-0.5">
                                   {v.gaps.map((g, i) => <li key={i}>{g}</li>)}
                                 </ul>
@@ -346,7 +350,7 @@ export default function ControlDetailPage() {
                             )}
                             {v.recommendations.length > 0 && (
                               <div>
-                                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">Recommendations</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">{t("control_detail.recommendations")}</p>
                                 <ul className="mt-1 list-disc pl-4 text-xs space-y-0.5">
                                   {v.recommendations.map((r, i) => <li key={i}>{r}</li>)}
                                 </ul>
@@ -360,7 +364,7 @@ export default function ControlDetailPage() {
                 );
               })}
               {!evLoading && evidence?.length === 0 && (
-                <p className="text-sm text-muted">No evidence yet.</p>
+                <p className="text-sm text-muted">{t("control_detail.no_evidence")}</p>
               )}
             </div>
           </CardContent>
@@ -370,13 +374,13 @@ export default function ControlDetailPage() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <MessageSquare className="h-4 w-4 text-muted" />
-              Comments & Activity
+              {t("control_detail.comments")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-2">
               <Input
-                placeholder="Add a comment..."
+                placeholder={t("control_detail.comment_placeholder")}
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleComment()}
@@ -386,7 +390,7 @@ export default function ControlDetailPage() {
               </Button>
             </div>
             <div className="space-y-3">
-              {comLoading && <p className="text-sm text-muted">Loading comments...</p>}
+              {comLoading && <p className="text-sm text-muted">{t("control_detail.comments_loading")}</p>}
               {comments?.map((c) => (
                 <div key={c.id} className="rounded-lg border border-border p-3">
                   <div className="flex items-center justify-between">
@@ -397,7 +401,7 @@ export default function ControlDetailPage() {
                 </div>
               ))}
               {!comLoading && comments?.length === 0 && (
-                <p className="text-sm text-muted">No comments yet.</p>
+                <p className="text-sm text-muted">{t("control_detail.no_comments")}</p>
               )}
             </div>
           </CardContent>

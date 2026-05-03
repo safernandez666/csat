@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { NavSidebar } from "./components/nav-sidebar";
 import { AppSettingsProvider } from "./contexts/app-settings";
+import { api } from "./lib/api";
+import { getStoredLanguage, setStoredLanguage, type Language } from "./lib/i18n";
 import { Spinner } from "./components/ui/spinner";
 import { Toaster } from "./components/ui/toaster";
 import LoginPage from "./pages/login";
@@ -42,10 +44,27 @@ function App() {
     } else {
       document.documentElement.classList.remove("dark");
     }
+    // Language init (applies on login page too, before AppSettingsProvider mounts)
+    document.documentElement.lang = getStoredLanguage();
 
     fetch("/api/auth/me", { credentials: "include" })
       .then((r) => {
         setAuthenticated(r.ok);
+        if (r.ok) {
+          // Best-effort: sync the stored language from the server on the very first
+          // render so deep links like /controls or /waves don't render in the
+          // wrong language while AppSettingsProvider is still booting.
+          api
+            .getPublicSettings()
+            .then(() => api.getSettings())
+            .then((s) => {
+              const v = s.language;
+              if (v === "en" || v === "es" || v === "pt") {
+                setStoredLanguage(v as Language);
+              }
+            })
+            .catch(() => {});
+        }
       })
       .catch(() => setAuthenticated(false));
   }, []);

@@ -8,6 +8,8 @@ import { api } from "../lib/api";
 import { useAppSettings } from "../contexts/app-settings";
 import { CheckCircle2, XCircle, Save, ChevronDown, ChevronUp, Shield, Upload, Trash2, Image, Bot, Activity } from "lucide-react";
 import { toast } from "../hooks/use-toast";
+import { useTranslation } from "../hooks/use-translation";
+import { type Language } from "../lib/i18n";
 
 interface IntegrationDef {
   name: string;
@@ -93,7 +95,8 @@ const INTEGRATIONS: IntegrationDef[] = [
 ];
 
 export default function SettingsPage() {
-  const { refreshSettings } = useAppSettings();
+  const { t } = useTranslation();
+  const { refreshSettings, setLanguage } = useAppSettings();
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -155,9 +158,9 @@ export default function SettingsPage() {
       const s = await api.getSettings();
       setSettings(s);
       await refreshSettings();
-      toast("Platform settings saved", "success");
+      toast(t("settings.toast.saved"), "success");
     } catch (e: any) {
-      toast(e.message || "Failed to save", "error");
+      toast(e.message || t("settings.toast.failed"), "error");
     } finally {
       setSaving(false);
     }
@@ -181,7 +184,7 @@ export default function SettingsPage() {
   };
 
   const handleRemoveLogo = async () => {
-    if (!confirm("Remove company logo?")) return;
+    if (!confirm(t("settings.remove_logo_confirm"))) return;
     try {
       await api.updateSetting("company_logo_url", null);
       const s = await api.getSettings();
@@ -233,31 +236,31 @@ export default function SettingsPage() {
   };
 
   return (
-    <Layout title="Settings" subtitle="Platform configuration & integrations">
+    <Layout title={t("settings.title")} subtitle={t("settings.subtitle")}>
       <div className="space-y-6">
         {/* Branding */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Image className="h-4 w-4 text-muted" />
-              Branding
+              {t("settings.branding")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <p className="text-sm text-muted">Loading...</p>
+              <p className="text-sm text-muted">{t("common.loading")}</p>
             ) : (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-muted mb-1">Company / Platform Name</label>
+                    <label className="block text-xs font-medium text-muted mb-1">{t("settings.platform_name")}</label>
                     <Input
                       value={platform.platform_name}
                       onChange={(e) => setPlatform({ ...platform, platform_name: e.target.value })}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted mb-1">Logo</label>
+                    <label className="block text-xs font-medium text-muted mb-1">{t("settings.logo")}</label>
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card overflow-hidden">
                         {settings.company_logo_url ? (
@@ -279,18 +282,18 @@ export default function SettingsPage() {
                         onClick={() => fileInputRef.current?.click()}
                       >
                         <Upload className="h-3 w-3 mr-1" />
-                        Choose
+                        {t("evidence.choose_file")}
                       </Button>
                       {logoFile && (
                         <Button size="sm" onClick={handleLogoUpload} disabled={uploadingLogo}>
                           <Save className="h-3 w-3 mr-1" />
-                          {uploadingLogo ? "Uploading..." : "Upload"}
+                          {uploadingLogo ? t("evidence.uploading") : t("evidence.upload")}
                         </Button>
                       )}
                       {settings.company_logo_url && (
                         <Button variant="outline" size="sm" onClick={handleRemoveLogo} className="text-danger hover:bg-danger-dim">
                           <Trash2 className="h-3 w-3 mr-1" />
-                          Remove
+                          {t("common.delete")}
                         </Button>
                       )}
                     </div>
@@ -301,17 +304,17 @@ export default function SettingsPage() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-muted mb-1">Default Theme</label>
+                    <label className="block text-xs font-medium text-muted mb-1">{t("settings.theme_default")}</label>
                     <Select
                       value={platform.theme_default}
                       onChange={(e) => setPlatform({ ...platform, theme_default: e.target.value })}
                     >
-                      <option value="dark">Dark</option>
-                      <option value="light">Light</option>
+                      <option value="dark">{t("settings.theme.dark")}</option>
+                      <option value="light">{t("settings.theme.light")}</option>
                     </Select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted mb-1">Review Reminder (days)</label>
+                    <label className="block text-xs font-medium text-muted mb-1">{t("settings.review_reminder_days")}</label>
                     <Input
                       type="number"
                       value={platform.review_reminder_days}
@@ -319,20 +322,25 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted mb-1">MFA Required (Admin)</label>
+                    <label className="block text-xs font-medium text-muted mb-1">{t("settings.mfa_admin")}</label>
                     <Select
                       value={platform.mfa_required_for_admin ? "true" : "false"}
                       onChange={(e) => setPlatform({ ...platform, mfa_required_for_admin: e.target.value === "true" })}
                     >
-                      <option value="false">No</option>
-                      <option value="true">Yes</option>
+                      <option value="false">{t("common.no")}</option>
+                      <option value="true">{t("common.yes")}</option>
                     </Select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted mb-1">Language</label>
+                    <label className="block text-xs font-medium text-muted mb-1">{t("settings.language")}</label>
                     <Select
                       value={platform.language}
-                      onChange={(e) => setPlatform({ ...platform, language: e.target.value })}
+                      onChange={(e) => {
+                        const next = e.target.value as Language;
+                        setPlatform({ ...platform, language: next });
+                        // Apply immediately so the UI translates without waiting for Save.
+                        setLanguage(next);
+                      }}
                     >
                       <option value="en">English</option>
                       <option value="es">Español</option>
@@ -345,7 +353,7 @@ export default function SettingsPage() {
             <div className="mt-4 flex justify-end">
               <Button onClick={savePlatform} disabled={saving} size="sm">
                 <Save className="h-4 w-4 mr-1" />
-                {saving ? "Saving..." : "Save Settings"}
+                {saving ? t("settings.saving") : t("settings.save")}
               </Button>
             </div>
           </CardContent>
@@ -356,13 +364,13 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Bot className="h-4 w-4 text-muted" />
-              AI Configuration
+              {t("settings.ai_config")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <label className="block text-xs font-medium text-muted mb-1">Provider</label>
+                <label className="block text-xs font-medium text-muted mb-1">{t("settings.ai_provider")}</label>
                 <Select
                   value={aiConfig.provider}
                   onChange={(e) => {
@@ -393,7 +401,7 @@ export default function SettingsPage() {
               </div>
               {aiConfig.provider === "ollama" && (
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">API URL</label>
+                  <label className="block text-xs font-medium text-muted mb-1">{t("settings.ai_api_url")}</label>
                   <Input
                     value={aiConfig.api_url}
                     onChange={(e) => setAiConfig({ ...aiConfig, api_url: e.target.value })}
@@ -403,7 +411,7 @@ export default function SettingsPage() {
               )}
               {aiConfig.provider !== "ollama" && (
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">API Key</label>
+                  <label className="block text-xs font-medium text-muted mb-1">{t("settings.ai_api_key")}</label>
                   <Input
                     type="password"
                     value={aiConfig.api_key}
@@ -421,7 +429,7 @@ export default function SettingsPage() {
                 </div>
               )}
               <div>
-                <label className="block text-xs font-medium text-muted mb-1">Model</label>
+                <label className="block text-xs font-medium text-muted mb-1">{t("settings.ai_model")}</label>
                 <Input
                   value={aiConfig.model}
                   onChange={(e) => setAiConfig({ ...aiConfig, model: e.target.value })}
@@ -440,27 +448,27 @@ export default function SettingsPage() {
             <div className="mt-4 flex items-center justify-between">
               <p className="text-xs text-muted">
                 {aiConfig.provider === "ollama"
-                  ? "Set your Ollama URL. From Docker, use http://host.docker.internal:11434 (Ollama on the host) or http://<lan-ip>:11434."
+                  ? t("settings.ai_help.ollama")
                   : aiConfig.provider === "openrouter"
-                  ? "Aggregator of many models incl. free tier. Get a key at https://openrouter.ai. Try meta-llama/llama-3.3-70b-instruct:free or google/gemini-2.0-flash-exp:free."
+                  ? t("settings.ai_help.openrouter")
                   : aiConfig.provider === "openai"
-                  ? "Uses https://api.openai.com. Only your API Key is needed."
-                  : "Uses https://api.anthropic.com. Only your API Key is needed."}
+                  ? t("settings.ai_help.openai")
+                  : t("settings.ai_help.anthropic")}
               </p>
               <div className="flex items-center gap-3">
                 {aiHealth && (
                   <span className={`text-xs flex items-center gap-1 ${aiHealth.status === "ok" ? "text-success" : "text-danger"}`}>
                     <Activity className="h-3 w-3" />
-                    {aiHealth.status === "ok" ? "Connected" : aiHealth.detail || "Connection failed"}
+                    {aiHealth.status === "ok" ? t("settings.ai_connected") : aiHealth.detail || t("settings.ai_failed")}
                   </span>
                 )}
                 <Button variant="outline" size="sm" onClick={testAiConnection} disabled={testingAi}>
                   <Activity className="h-3 w-3 mr-1" />
-                  {testingAi ? "Testing..." : "Test Connection"}
+                  {testingAi ? t("settings.ai_testing") : t("settings.ai_test")}
                 </Button>
                 <Button size="sm" onClick={saveAiConfig}>
                   <Save className="h-3 w-3 mr-1" />
-                  Save AI Config
+                  {t("common.save")}
                 </Button>
               </div>
             </div>
@@ -470,7 +478,7 @@ export default function SettingsPage() {
         {/* Integrations */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Integrations</CardTitle>
+            <CardTitle className="text-base">{t("settings.integrations")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {INTEGRATIONS.map((integration) => {
@@ -499,7 +507,7 @@ export default function SettingsPage() {
                           {integration.name}
                         </div>
                         <div className="text-[10px] text-muted">
-                          {isConfigured ? "Configured" : "Not configured"}
+                          {isConfigured ? t("settings.configured") : t("settings.not_configured")}
                         </div>
                       </div>
                     </div>
@@ -535,6 +543,9 @@ function IntegrationForm({
   onSave: (values: Record<string, any>) => void;
   saving: boolean;
 }) {
+  const { t } = useTranslation();
+  const save_label = t("settings.save_config");
+  const saving_label = t("common.saving");
   const [values, setValues] = useState<Record<string, any>>(() => {
     const v: Record<string, any> = {};
     integration.fields.forEach((f) => {
@@ -560,7 +571,7 @@ function IntegrationForm({
       <div className="flex justify-end">
         <Button size="sm" onClick={() => onSave(values)} disabled={saving}>
           <Save className="h-4 w-4 mr-1" />
-          {saving ? "Saving..." : "Save Configuration"}
+          {saving ? saving_label : save_label}
         </Button>
       </div>
     </div>

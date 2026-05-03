@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useControls } from "../hooks/use-api";
+import { localizeControl } from "../lib/cis-catalog-i18n";
 import { Layout } from "../components/layout";
 import { Card, CardContent } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -8,6 +9,7 @@ import { ControlStatusBadge } from "../components/control-status-badge";
 import { RiskBadge } from "../components/risk-badge";
 import { Search, Layers } from "lucide-react";
 import type { Control } from "../types";
+import { useTranslation } from "../hooks/use-translation";
 
 const groupColors: Record<string, string> = {
   Basic: "text-success",
@@ -53,6 +55,7 @@ function IgProgressMini({ control }: { control: Control }) {
 }
 
 export default function ControlsPage() {
+  const { t, lang } = useTranslation();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [riskFilter, setRiskFilter] = useState("");
@@ -62,7 +65,12 @@ export default function ControlsPage() {
     ...(riskFilter ? { risk: riskFilter } : {}),
   });
 
-  const filtered = (data || []).filter((c) => {
+  const localized = useMemo(
+    () => (data || []).map((c) => localizeControl(c, lang)),
+    [data, lang]
+  );
+
+  const filtered = localized.filter((c) => {
     const q = search.toLowerCase();
     const matchesSearch =
       c.name.toLowerCase().includes(q) ||
@@ -73,46 +81,46 @@ export default function ControlsPage() {
   });
 
   return (
-    <Layout title="CIS Controls" subtitle="Manage CIS Controls v8">
+    <Layout title={t("controls.title")} subtitle={t("controls.subtitle")}>
       <Card>
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
               <Input
-                placeholder="Search controls..."
+                placeholder={t("controls.search_placeholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
               />
             </div>
             <div className="flex gap-2 flex-wrap">
-              <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-40">
-                <option value="">All Statuses</option>
-                <option value="not_implemented">Not Implemented</option>
-                <option value="in_progress">In Progress</option>
-                <option value="implemented">Implemented</option>
-                <option value="needs_review">Needs Review</option>
+              <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-40" aria-label={t("controls.filter_status")}>
+                <option value="">{t("common.all")} — {t("common.status")}</option>
+                <option value="not_implemented">{t("status.not_implemented.long")}</option>
+                <option value="in_progress">{t("status.in_progress.long")}</option>
+                <option value="implemented">{t("status.implemented.long")}</option>
+                <option value="needs_review">{t("status.needs_review.long")}</option>
               </Select>
-              <Select value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)} className="w-40">
-                <option value="">All Risks</option>
-                <option value="critical">Critical</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
+              <Select value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)} className="w-40" aria-label={t("controls.filter_risk")}>
+                <option value="">{t("common.all")} — {t("control_detail.risk_level")}</option>
+                <option value="critical">{t("risk.critical")}</option>
+                <option value="high">{t("risk.high")}</option>
+                <option value="medium">{t("risk.medium")}</option>
+                <option value="low">{t("risk.low")}</option>
               </Select>
-              <Select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} className="w-44">
-                <option value="">All Groups</option>
-                <option value="Basic">Basic (1-6)</option>
-                <option value="Foundational">Foundational (7-16)</option>
-                <option value="Organizational">Organizational (17-18)</option>
+              <Select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} className="w-44" aria-label={t("controls.filter_group")}>
+                <option value="">{t("common.all")} — {t("control_detail.group")}</option>
+                <option value="Basic">{t("group.basic")} (1-6)</option>
+                <option value="Foundational">{t("group.foundational")} (7-16)</option>
+                <option value="Organizational">{t("group.organizational")} (17-18)</option>
               </Select>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {loading && <p className="text-center text-muted py-8">Loading controls...</p>}
+      {loading && <p className="text-center text-muted py-8">{t("common.loading")}</p>}
       {error && <p className="text-center text-danger py-8">{error}</p>}
 
       <div className="space-y-3">
@@ -130,7 +138,7 @@ export default function ControlsPage() {
                   <RiskBadge risk={control.risk_level} />
                   <span className={`inline-flex items-center gap-1 text-xs font-semibold ${groupColors[control.group] || "text-muted"}`}>
                     <Layers className="h-3 w-3" />
-                    {control.group}
+                    {t(`group.${control.group.toLowerCase()}`)}
                   </span>
                 </div>
                 <h3 className="text-sm font-semibold truncate">{control.name}</h3>
@@ -140,14 +148,14 @@ export default function ControlsPage() {
                 <IgProgressMini control={control} />
               </div>
               <div className="text-right text-xs text-muted shrink-0">
-                <div>{control.safeguards.length} safeguards</div>
-                {control.owner_name && <div>Owner: {control.owner_name}</div>}
+                <div>{t("controls.safeguards_count", { count: control.safeguards.length })}</div>
+                {control.owner_name && <div>{t("control_detail.owner")}: {control.owner_name}</div>}
               </div>
             </div>
           </a>
         ))}
         {!loading && filtered.length === 0 && (
-          <p className="text-center text-muted py-8">No controls found.</p>
+          <p className="text-center text-muted py-8">{t("controls.no_results")}</p>
         )}
       </div>
     </Layout>

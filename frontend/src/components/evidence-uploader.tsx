@@ -3,6 +3,7 @@ import { Upload, X, FileText, Link as LinkIcon } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { useTranslation } from "../hooks/use-translation";
 
 interface EvidenceUploaderProps {
   controlId: number;
@@ -10,6 +11,7 @@ interface EvidenceUploaderProps {
 }
 
 export function EvidenceUploader({ controlId, onUploaded }: EvidenceUploaderProps) {
+  const { t } = useTranslation();
   const [file, setFile] = useState<File | null>(null);
   const [note, setNote] = useState("");
   const [link, setLink] = useState("");
@@ -65,7 +67,7 @@ export function EvidenceUploader({ controlId, onUploaded }: EvidenceUploaderProp
         ) : (
           <>
             <Upload className="mb-2 h-6 w-6 text-muted" />
-            <p className="text-sm text-muted">Drag & drop a file or click to browse</p>
+            <p className="text-sm text-muted">{t("evidence.choose_file")}</p>
             <Input
               type="file"
               className="mt-2 w-auto"
@@ -78,19 +80,19 @@ export function EvidenceUploader({ controlId, onUploaded }: EvidenceUploaderProp
       <div className="flex items-center gap-2">
         <LinkIcon className="h-4 w-4 text-muted" />
         <Input
-          placeholder="External link (optional)"
+          placeholder={t("evidence.external_link_placeholder")}
           value={link}
           onChange={(e) => setLink(e.target.value)}
           className="flex-1"
         />
       </div>
       <Input
-        placeholder="Note (optional)"
+        placeholder={t("evidence.note_placeholder")}
         value={note}
         onChange={(e) => setNote(e.target.value)}
       />
       <Button onClick={handleSubmit} disabled={uploading || (!file && !link.trim())} className="w-full">
-        {uploading ? "Uploading..." : "Add Evidence"}
+        {uploading ? t("evidence.uploading") : t("evidence.upload")}
       </Button>
     </div>
   );

@@ -1,4 +1,5 @@
 import { cn } from "../lib/utils";
+import { useTranslation } from "../hooks/use-translation";
 
 interface UserRoleBadgeProps {
   role: string;
@@ -12,7 +13,17 @@ const roleColors: Record<string, string> = {
   Viewer: "text-muted bg-card border-border",
 };
 
+const roleI18nKeys: Record<string, string> = {
+  Admin: "users.role.admin",
+  "Security Analyst": "users.role.security_analyst",
+  Auditor: "users.role.auditor",
+  Viewer: "users.role.viewer",
+};
+
 export function UserRoleBadge({ role, className }: UserRoleBadgeProps) {
+  const { t } = useTranslation();
+  const key = roleI18nKeys[role];
+  const label = key ? t(key) : role;
   return (
     <span
       className={cn(
@@ -21,7 +32,7 @@ export function UserRoleBadge({ role, className }: UserRoleBadgeProps) {
         className
       )}
     >
-      {role}
+      {label}
     </span>
   );
 }

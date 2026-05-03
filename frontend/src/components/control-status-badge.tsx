@@ -1,4 +1,5 @@
-import { cn, statusLabel, statusColor } from "../lib/utils";
+import { cn, statusColor } from "../lib/utils";
+import { useTranslation } from "../hooks/use-translation";
 
 interface ControlStatusBadgeProps {
   status: string;
@@ -6,6 +7,11 @@ interface ControlStatusBadgeProps {
 }
 
 export function ControlStatusBadge({ status, className }: ControlStatusBadgeProps) {
+  const { t } = useTranslation();
+  const known = ["implemented", "in_progress", "needs_review", "not_implemented"].includes(status);
+  const label = known
+    ? t(`status.${status}.long`)
+    : status.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
   return (
     <span
       className={cn(
@@ -14,7 +20,7 @@ export function ControlStatusBadge({ status, className }: ControlStatusBadgeProp
         className
       )}
     >
-      {statusLabel(status)}
+      {label}
     </span>
   );
 }

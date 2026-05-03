@@ -1,4 +1,5 @@
 import { cn, riskColor } from "../lib/utils";
+import { useTranslation } from "../hooks/use-translation";
 
 interface RiskBadgeProps {
   risk: string;
@@ -6,6 +7,9 @@ interface RiskBadgeProps {
 }
 
 export function RiskBadge({ risk, className }: RiskBadgeProps) {
+  const { t } = useTranslation();
+  const known = ["critical", "high", "medium", "low"].includes(risk);
+  const label = known ? t(`risk.${risk}`) : risk.charAt(0).toUpperCase() + risk.slice(1);
   return (
     <span
       className={cn(
@@ -14,7 +18,7 @@ export function RiskBadge({ risk, className }: RiskBadgeProps) {
         className
       )}
     >
-      {risk.charAt(0).toUpperCase() + risk.slice(1)}
+      {label}
     </span>
   );
 }

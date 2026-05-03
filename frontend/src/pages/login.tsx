@@ -4,8 +4,10 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { ParticlesBackground } from "../components/particles-background";
 import { api } from "../lib/api";
+import { useTranslation } from "../hooks/use-translation";
 
 export default function LoginPage() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -47,13 +49,13 @@ export default function LoginPage() {
           </div>
           <div className="text-center">
             <h1 className="text-xl font-bold tracking-tight">{platformName}</h1>
-            <p className="text-sm text-muted">CIS Controls Assessment & Tracking</p>
+            <p className="text-sm text-muted">{t("login.subtitle")}</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">Email</label>
+            <label className="block text-xs font-medium text-muted mb-1">{t("login.email")}</label>
             <Input
               type="email"
               value={email}
@@ -64,7 +66,7 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">Password</label>
+            <label className="block text-xs font-medium text-muted mb-1">{t("login.password")}</label>
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
@@ -85,13 +87,13 @@ export default function LoginPage() {
           </div>
           {error && <p className="text-xs text-danger">{error}</p>}
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Signing in..." : "Sign in"}
+            {loading ? t("login.submitting") : t("login.submit")}
           </Button>
         </form>
 
         {publicSettings.is_dev && (
           <div className="rounded-lg border border-border bg-card/50 p-3 text-xs text-muted space-y-1">
-            <p className="font-semibold text-foreground">Demo credentials</p>
+            <p className="font-semibold text-foreground">{t("login.demo_credentials")}</p>
             <p>admin@csat.local / Admin123!</p>
             <p>analyst@csat.local / Analyst123!</p>
           </div>

@@ -1,5 +1,10 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { api } from "../lib/api";
+import {
+  getStoredLanguage,
+  setStoredLanguage,
+  type Language,
+} from "../lib/i18n";
 
 interface AppSettings {
   platform_name: string;
@@ -7,13 +12,13 @@ interface AppSettings {
   theme_default: string;
   review_reminder_days: number;
   mfa_required_for_admin: boolean;
-  language: string;
+  language: Language;
 }
 
 interface AppSettingsContextValue {
   settings: AppSettings;
   refreshSettings: () => Promise<void>;
-  setLanguage: (lang: string) => Promise<void>;
+  setLanguage: (lang: Language) => Promise<void>;
 }
 
 const defaultSettings: AppSettings = {
@@ -22,7 +27,7 @@ const defaultSettings: AppSettings = {
   theme_default: "dark",
   review_reminder_days: 7,
   mfa_required_for_admin: false,
-  language: "en",
+  language: getStoredLanguage(),
 };
 
 const AppSettingsContext = createContext<AppSettingsContextValue>({
@@ -35,33 +40,45 @@ export function useAppSettings() {
   return useContext(AppSettingsContext);
 }
 
+function coerceLanguage(value: unknown): Language {
+  return value === "es" || value === "pt" ? value : "en";
+}
+
 export function AppSettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
 
   const refreshSettings = async () => {
     try {
       const s = await api.getSettings();
+      const lang = coerceLanguage(s.language);
       setSettings({
         platform_name: s.platform_name || "CSAT",
         company_logo_url: s.company_logo_url || null,
         theme_default: s.theme_default || "dark",
         review_reminder_days: s.review_reminder_days || 7,
         mfa_required_for_admin: !!s.mfa_required_for_admin,
-        language: s.language || "en",
+        language: lang,
       });
+      // Sync remote → local so anonymous routes (login) stay in sync.
+      setStoredLanguage(lang);
     } catch {
       // ignore
     }
   };
 
-  const setLanguage = async (lang: string) => {
+  const setLanguage = async (lang: Language) => {
+    setStoredLanguage(lang);
+    setSettings((prev) => ({ ...prev, language: lang }));
     try {
       await api.updateSetting("language", lang);
-      setSettings((prev) => ({ ...prev, language: lang }));
     } catch {
-      // ignore
+      // ignore: localStorage already applied; remote will sync on next save
     }
   };
+
+  useEffect(() => {
+    document.documentElement.lang = settings.language;
+  }, [settings.language]);
 
   useEffect(() => {
     refreshSettings();

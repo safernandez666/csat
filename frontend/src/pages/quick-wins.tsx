@@ -5,10 +5,13 @@ import { Alert, AlertTitle, AlertDescription } from "../components/ui/alert";
 import { api } from "../lib/api";
 import { Zap, ShieldCheck, ArrowRight, AlertTriangle, Sparkles } from "lucide-react";
 import { Spinner } from "../components/ui/spinner";
+import { useTranslation } from "../hooks/use-translation";
+import { localizeControlName } from "../lib/cis-catalog-i18n";
 
 const STORAGE_KEY = "csat_quick_wins_seen";
 
 export default function QuickWinsPage() {
+  const { t, lang } = useTranslation();
   const [data, setData] = useState<any[]>([]);
   const [, setAiAnalysis] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -33,7 +36,7 @@ export default function QuickWinsPage() {
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(currentIds));
     } catch (e: any) {
-      setError(e.message || "Failed to load quick wins");
+      setError(e.message || t("qw.failed"));
     } finally {
       setLoading(false);
     }
@@ -41,24 +44,25 @@ export default function QuickWinsPage() {
 
   useEffect(() => {
     refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const plural = (n: number) => (n > 1 ? "s" : "");
+
   return (
-    <Layout title="Quick Wins" subtitle="Prioritized actions to improve your security posture">
+    <Layout title={t("qw.title")} subtitle={t("qw.subtitle")}>
       <div className="mx-auto max-w-4xl space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-warning" />
-            <p className="text-sm text-muted">
-              These recommendations are re-evaluated every time you update a control.
-            </p>
+            <p className="text-sm text-muted">{t("qw.intro")}</p>
           </div>
           <button
             onClick={refresh}
             className="text-xs font-medium text-accent hover:underline"
             disabled={loading}
           >
-            {loading ? "Analyzing..." : "Refresh analysis"}
+            {loading ? t("qw.refreshing") : t("qw.refresh")}
           </button>
         </div>
 
@@ -66,7 +70,7 @@ export default function QuickWinsPage() {
           <Card>
             <CardContent className="py-8 flex flex-col items-center gap-3 text-sm text-muted">
               <Spinner className="text-accent" />
-              Analyzing your security posture...
+              {t("qw.loading")}
             </CardContent>
           </Card>
         )}
@@ -74,9 +78,9 @@ export default function QuickWinsPage() {
         {newWins.length > 0 && !loading && (
           <Alert variant="info" className="animate-fade-in-up">
             <Sparkles className="h-4 w-4" />
-            <AlertTitle>New quick win{newWins.length > 1 ? "s" : ""} detected</AlertTitle>
+            <AlertTitle>{t("qw.new_detected", { plural: plural(newWins.length) })}</AlertTitle>
             <AlertDescription>
-              {newWins.length} recommendation{newWins.length > 1 ? "s" : ""} appeared that weren&apos;t in your previous analysis. Review them below.
+              {t("qw.new_desc", { count: newWins.length, plural: plural(newWins.length), plural2: plural(newWins.length) })}
             </AlertDescription>
           </Alert>
         )}
@@ -93,7 +97,7 @@ export default function QuickWinsPage() {
         {!loading && !error && data.length === 0 && (
           <Card>
             <CardContent className="py-8 text-center text-sm text-muted">
-              No quick wins available. Great job!
+              {t("qw.empty")}
             </CardContent>
           </Card>
         )}
@@ -122,7 +126,7 @@ export default function QuickWinsPage() {
                               : "bg-danger-dim text-danger"
                           }`}
                         >
-                          {win.effort} effort
+                          {t(`qw.effort.${win.effort}`)}
                         </span>
                       )}
                       {win.impact && (
@@ -135,11 +139,11 @@ export default function QuickWinsPage() {
                               : "bg-danger-dim text-danger"
                           }`}
                         >
-                          {win.impact} impact
+                          {t(`qw.impact.${win.impact}`)}
                         </span>
                       )}
                     </div>
-                    <h3 className="text-base font-semibold">{win.name}</h3>
+                    <h3 className="text-base font-semibold">{win.cis_id ? localizeControlName(win.cis_id, win.name, lang) : win.name}</h3>
                     {win.why && <p className="text-sm text-muted mt-1">{win.why}</p>}
                     {win.next_action && (
                       <div className="mt-3 flex items-center gap-2 rounded-lg bg-accent/5 border border-accent/10 p-3">

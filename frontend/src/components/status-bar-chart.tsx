@@ -4,6 +4,7 @@ import { Bar, BarChart, CartesianGrid, Rectangle, XAxis } from "recharts";
 import type { BarShapeProps } from "recharts/types/cartesian/Bar";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "./ui/chart";
+import { useTranslation } from "../hooks/use-translation";
 
 interface StatusBarChartProps {
   implemented: number;
@@ -18,6 +19,7 @@ export function StatusBarChart({
   notImplemented,
   needsReview,
 }: StatusBarChartProps) {
+  const { t } = useTranslation();
   const chartData = [
     { status: "implemented", value: implemented, fill: "var(--color-success)" },
     { status: "in_progress", value: inProgress, fill: "var(--color-info)" },
@@ -26,11 +28,11 @@ export function StatusBarChart({
   ];
 
   const chartConfig = {
-    value: { label: "Controls" },
-    implemented: { label: "Implemented", color: "var(--color-success)" },
-    in_progress: { label: "In Progress", color: "var(--color-info)" },
-    not_implemented: { label: "Not Implemented", color: "var(--color-danger)" },
-    needs_review: { label: "Needs Review", color: "var(--color-warning)" },
+    value: { label: t("nav.controls") },
+    implemented: { label: t("status.implemented.long"), color: "var(--color-success)" },
+    in_progress: { label: t("status.in_progress.long"), color: "var(--color-info)" },
+    not_implemented: { label: t("status.not_implemented.long"), color: "var(--color-danger)" },
+    needs_review: { label: t("status.needs_review.long"), color: "var(--color-warning)" },
   } satisfies ChartConfig;
 
   const maxIndex = chartData.reduce(
@@ -41,7 +43,7 @@ export function StatusBarChart({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Status Distribution</CardTitle>
+        <CardTitle className="text-base">{t("dashboard.status_breakdown")}</CardTitle>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="aspect-video h-64">

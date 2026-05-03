@@ -16,6 +16,8 @@ import {
 } from "../components/ui/chart";
 import { Calendar, Activity, Target, AlertCircle } from "lucide-react";
 import { Spinner } from "../components/ui/spinner";
+import { useTranslation } from "../hooks/use-translation";
+import { localizeControlName } from "../lib/cis-catalog-i18n";
 
 const RISK_COLORS: Record<string, string> = {
   critical: "var(--color-danger)",
@@ -53,6 +55,7 @@ const controlChartConfig = {
 
 
 export default function DashboardPage() {
+  const { t, lang } = useTranslation();
   const { data, radar, igProgress, controlScores, loading, error } = useDashboard();
 
   if (loading) {
@@ -60,7 +63,7 @@ export default function DashboardPage() {
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex items-center gap-3">
           <Spinner className="text-accent" />
-          <span className="text-sm text-muted">Loading dashboard...</span>
+          <span className="text-sm text-muted">{t("dashboard.loading")}</span>
         </div>
       </div>
     );
@@ -68,15 +71,15 @@ export default function DashboardPage() {
 
   if (error || !data) {
     return (
-      <Layout title="Dashboard" subtitle="Overview">
-        <p className="text-center text-muted py-8">Failed to load dashboard.</p>
+      <Layout title={t("dashboard.title")} subtitle={t("dashboard.subtitle")}>
+        <p className="text-center text-muted py-8">{t("dashboard.failed")}</p>
       </Layout>
     );
   }
 
   const s = data.summary;
   const riskData = Object.entries(s.by_risk)
-    .map(([key, value]) => ({ name: key.charAt(0).toUpperCase() + key.slice(1), value, key }))
+    .map(([key, value]) => ({ name: t(`risk.${key}`) || key.charAt(0).toUpperCase() + key.slice(1), value, key }))
     .filter((d) => d.value > 0);
 
   const radarData = radar || [];
@@ -85,7 +88,7 @@ export default function DashboardPage() {
     : [];
 
   return (
-    <Layout title="Dashboard" subtitle="Compliance overview and activity">
+    <Layout title={t("dashboard.title")} subtitle={t("dashboard.subtitle")}>
       <div className="space-y-8">
         <ComplianceSummaryCard
           score={s.compliance_score}
@@ -100,7 +103,7 @@ export default function DashboardPage() {
         {controlScores && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">CIS Controls Overview</CardTitle>
+              <CardTitle className="text-base">{t("dashboard.cis_controls_overview")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-9 gap-2">
@@ -113,12 +116,13 @@ export default function DashboardPage() {
                       : c.status === "needs_review"
                       ? "bg-warning-dim text-warning border-warning-border hover:bg-warning/25"
                       : "bg-danger-dim text-danger border-danger-border hover:bg-danger/25";
+                  const localizedName = localizeControlName(c.cis_id, c.name, lang);
                   return (
                     <a
                       key={c.id}
                       href={`/controls/${c.id}`}
                       className={`flex items-center justify-center rounded-lg border px-2 py-2 text-xs font-semibold transition-colors ${color}`}
-                      title={`${c.name} (${c.score}%)`}
+                      title={`${localizedName} (${c.score}%)`}
                     >
                       CIS {c.cis_id}
                     </a>
@@ -135,7 +139,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Target className="h-4 w-4 text-muted" />
-                Control Group Maturity
+                {t("dashboard.group_maturity")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -163,7 +167,7 @@ export default function DashboardPage() {
                       className="inline-block h-2.5 w-2.5 rounded-full"
                       style={{ backgroundColor: RADAR_COLORS[g.group] || "var(--color-muted)" }}
                     />
-                    <span>{g.group}</span>
+                    <span>{t(`group.${g.group.toLowerCase()}`)}</span>
                     <span className="font-semibold text-foreground">{g.score}%</span>
                   </div>
                 ))}
@@ -176,7 +180,7 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
                   <Target className="h-4 w-4 text-muted" />
-                  Implementation Group Maturity
+                  {t("dashboard.ig_maturity")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -228,7 +232,7 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
                   <Target className="h-4 w-4 text-muted" />
-                  Spider Web — 18 Controls
+                  {t("dashboard.spider_18")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -266,10 +270,10 @@ export default function DashboardPage() {
                         className="inline-block h-2.5 w-2.5 rounded-full"
                         style={{ backgroundColor: RADAR_COLORS[g] || "var(--color-muted)" }}
                       />
-                      <span>{g}</span>
+                      <span>{t(`group.${g.toLowerCase()}`)}</span>
                     </div>
                   ))}
-                  <span className="text-[10px]">(tooltip shows control name)</span>
+                  <span className="text-[10px]">{t("dashboard.spider_tooltip_hint")}</span>
                 </div>
               </CardContent>
             </Card>
@@ -286,13 +290,13 @@ export default function DashboardPage() {
         {/* Risk Distribution — visual cards instead of generic bars */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Risk Distribution</CardTitle>
+            <CardTitle className="text-base">{t("dashboard.risk_distribution")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {s.not_implemented === s.total && (
               <div className="flex items-center gap-2 rounded-lg border border-warning/30 bg-warning-dim px-3 py-2 text-xs text-warning">
                 <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>These risk levels are default seed values. Update controls to reflect your actual risk assessment.</span>
+                <span>{t("dashboard.risk_seed_warning")}</span>
               </div>
             )}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -308,7 +312,7 @@ export default function DashboardPage() {
                         className="inline-block h-2.5 w-2.5 rounded-full"
                         style={{ backgroundColor: RISK_COLORS[entry.key] }}
                       />
-                      <span className="text-xs font-medium text-muted capitalize">{entry.key}</span>
+                      <span className="text-xs font-medium text-muted capitalize">{t(`risk.${entry.key}`)}</span>
                     </div>
                     <div className="text-2xl font-bold">{entry.value}</div>
                     <div className="space-y-1">
@@ -321,7 +325,7 @@ export default function DashboardPage() {
                           }}
                         />
                       </div>
-                      <div className="text-[10px] text-muted font-medium">{pct}% of total</div>
+                      <div className="text-[10px] text-muted font-medium">{t("dashboard.metric.pct_of_total", { pct })}</div>
                     </div>
                   </div>
                 );
@@ -335,12 +339,12 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-muted" />
-                Upcoming Reviews
+                {t("dashboard.upcoming_reviews")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{data.upcoming_reviews}</div>
-              <p className="text-sm text-muted mt-1">Controls requiring review in the next 7 days</p>
+              <p className="text-sm text-muted mt-1">{t("dashboard.upcoming_reviews_desc")}</p>
             </CardContent>
           </Card>
 
@@ -348,7 +352,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Activity className="h-4 w-4 text-muted" />
-                Recent Activity
+                {t("dashboard.recent_activity")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -356,14 +360,14 @@ export default function DashboardPage() {
                 {data.recent_activity.map((ctrl) => (
                   <div key={ctrl.id} className="flex items-center justify-between rounded-lg border border-border p-3">
                     <div>
-                      <div className="text-sm font-medium">{ctrl.name}</div>
-                      <div className="text-xs text-muted">Updated {formatDateShort(ctrl.updated_at)}</div>
+                      <div className="text-sm font-medium">{localizeControlName(ctrl.cis_id, ctrl.name, lang)}</div>
+                      <div className="text-xs text-muted">{t("dashboard.updated_ago", { date: formatDateShort(ctrl.updated_at) })}</div>
                     </div>
                     <ControlStatusBadge status={ctrl.status} />
                   </div>
                 ))}
                 {data.recent_activity.length === 0 && (
-                  <p className="text-sm text-muted">No recent activity</p>
+                  <p className="text-sm text-muted">{t("dashboard.no_recent_activity")}</p>
                 )}
               </div>
             </CardContent>

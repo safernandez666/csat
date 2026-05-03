@@ -6,6 +6,7 @@ import { Button } from "../components/ui/button";
 import { api } from "../lib/api";
 import { useAppSettings } from "../contexts/app-settings";
 import { Bot, User, Send, Sparkles, Trash2 } from "lucide-react";
+import { useTranslation } from "../hooks/use-translation";
 
 interface Message {
   role: "user" | "assistant";
@@ -13,12 +14,13 @@ interface Message {
 }
 
 export default function AssistantPage() {
+  const { t } = useTranslation();
   const { settings } = useAppSettings();
   const platformName = settings.platform_name || "CSAT";
 
   const greeting: Message = {
     role: "assistant",
-    content: `Hi! I'm your ${platformName} AI Assistant. I can help you understand your CIS Controls posture, suggest quick wins, and answer questions about safeguards and evidence. What would you like to know?`,
+    content: t("assistant.greeting", { platform: platformName }),
   };
 
   const [messages, setMessages] = useState<Message[]>([greeting]);
@@ -28,7 +30,6 @@ export default function AssistantPage() {
   const [clearing, setClearing] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Load chat history on mount. The greeting only shows when there is no history.
   useEffect(() => {
     let cancelled = false;
     api
@@ -37,6 +38,9 @@ export default function AssistantPage() {
         if (cancelled) return;
         if (rows.length > 0) {
           setMessages(rows.map((r) => ({ role: r.role, content: r.content })));
+        } else {
+          // Refresh the greeting with current language whenever history is empty.
+          setMessages([greeting]);
         }
       })
       .catch(() => {
@@ -48,7 +52,8 @@ export default function AssistantPage() {
     return () => {
       cancelled = true;
     };
-  }, [platformName]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [platformName, t]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -66,7 +71,7 @@ export default function AssistantPage() {
     } catch (e: any) {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: `Error: ${e.message || "Unable to reach AI service."}` },
+        { role: "assistant", content: `${t("common.error")}: ${e.message || t("assistant.unable")}` },
       ]);
     } finally {
       setLoading(false);
@@ -75,13 +80,13 @@ export default function AssistantPage() {
 
   const handleClear = async () => {
     if (clearing) return;
-    if (!confirm("Borrar la conversación? Esta acción no se puede deshacer.")) return;
+    if (!confirm(t("assistant.clear_confirm"))) return;
     setClearing(true);
     try {
       await api.clearChatHistory();
       setMessages([greeting]);
     } catch (e: any) {
-      alert(e.message || "No se pudo borrar el historial");
+      alert(e.message || t("assistant.clear_failed"));
     } finally {
       setClearing(false);
     }
@@ -90,13 +95,13 @@ export default function AssistantPage() {
   const hasUserMessages = messages.some((m) => m.role === "user");
 
   return (
-    <Layout title="AI Assistant" subtitle="Ask questions about your security posture">
+    <Layout title={t("assistant.title")} subtitle={t("assistant.subtitle")}>
       <div className="mx-auto max-w-3xl space-y-6">
         <Card className="flex flex-col" style={{ height: "calc(100vh - 12rem)" }}>
           <CardHeader className="shrink-0 border-b border-border flex flex-row items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-accent" />
-              {platformName} AI Assistant
+              {platformName} {t("assistant.title")}
             </CardTitle>
             {hasUserMessages && (
               <Button
@@ -107,13 +112,13 @@ export default function AssistantPage() {
                 className="text-muted hover:text-danger"
               >
                 <Trash2 className="h-3 w-3 mr-1" />
-                {clearing ? "Borrando..." : "Limpiar"}
+                {clearing ? t("common.deleting") : t("assistant.clear")}
               </Button>
             )}
           </CardHeader>
           <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
             {historyLoading && (
-              <div className="text-xs text-muted text-center py-2">Cargando historial...</div>
+              <div className="text-xs text-muted text-center py-2">{t("assistant.history_loading")}</div>
             )}
             {messages.map((m, i) => (
               <div key={i} className={`flex gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
@@ -143,7 +148,7 @@ export default function AssistantPage() {
                   <Bot className="h-4 w-4 animate-pulse" />
                 </div>
                 <div className="rounded-xl border border-border bg-card px-4 py-2 text-sm text-muted">
-                  Thinking...
+                  {t("assistant.thinking")}
                 </div>
               </div>
             )}
@@ -152,7 +157,7 @@ export default function AssistantPage() {
           <div className="shrink-0 border-t border-border p-4">
             <div className="flex gap-2">
               <Input
-                placeholder="Ask about quick wins, controls, safeguards..."
+                placeholder={t("assistant.input_placeholder")}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSend()}

@@ -5,18 +5,20 @@ import { Button } from "../components/ui/button";
 import { api } from "../lib/api";
 import { Download, FileText, CheckCircle, Sparkles, BarChart3, Shield, AlertTriangle, Sheet } from "lucide-react";
 import { Spinner } from "../components/ui/spinner";
-
-const reportSections = [
-  { icon: Sparkles, label: "AI Executive Summary", desc: "Generated analysis of your security posture" },
-  { icon: BarChart3, label: "Compliance Overview", desc: "Score, metrics, and risk distribution" },
-  { icon: Shield, label: "IG Maturity", desc: "IG1, IG2, IG3 implementation progress" },
-  { icon: AlertTriangle, label: "Top Quick Wins", desc: "Prioritized actions with effort & impact" },
-  { icon: FileText, label: "Control Details", desc: "Complete inventory with safeguard status" },
-];
+import { useTranslation } from "../hooks/use-translation";
 
 export default function ExportReportPage() {
+  const { t } = useTranslation();
   const [exporting, setExporting] = useState<"pdf" | "xlsx" | null>(null);
   const [error, setError] = useState("");
+
+  const reportSections = [
+    { icon: Sparkles, label: t("reports.section.exec.label"), desc: t("reports.section.exec.desc") },
+    { icon: BarChart3, label: t("reports.section.overview.label"), desc: t("reports.section.overview.desc") },
+    { icon: Shield, label: t("reports.section.ig.label"), desc: t("reports.section.ig.desc") },
+    { icon: AlertTriangle, label: t("reports.section.qw.label"), desc: t("reports.section.qw.desc") },
+    { icon: FileText, label: t("reports.section.controls.label"), desc: t("reports.section.controls.desc") },
+  ];
 
   const handleExportPdf = async () => {
     setExporting("pdf");
@@ -24,7 +26,7 @@ export default function ExportReportPage() {
     try {
       await api.exportPdf();
     } catch (e: any) {
-      setError(e.message || "Failed to generate PDF");
+      setError(e.message || t("reports.failed_pdf"));
     } finally {
       setExporting(null);
     }
@@ -36,27 +38,24 @@ export default function ExportReportPage() {
     try {
       await api.exportXlsx();
     } catch (e: any) {
-      setError(e.message || "Failed to generate Excel");
+      setError(e.message || t("reports.failed_xlsx"));
     } finally {
       setExporting(null);
     }
   };
 
   return (
-    <Layout title="Export Report" subtitle="Generate comprehensive compliance reports">
+    <Layout title={t("reports.title")} subtitle={t("reports.subtitle")}>
       <div className="mx-auto max-w-3xl space-y-6">
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <FileText className="h-4 w-4 text-muted" />
-              Compliance Reports
+              {t("reports.compliance_reports")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <p className="text-sm text-muted">
-              Generate a comprehensive report covering your entire CIS Controls v8 assessment.
-              Choose PDF for a formatted document with AI analysis, or Excel for raw data.
-            </p>
+            <p className="text-sm text-muted">{t("reports.intro")}</p>
 
             <div className="grid gap-3">
               {reportSections.map((section, i) => (
@@ -82,11 +81,11 @@ export default function ExportReportPage() {
             <div className="flex flex-col sm:flex-row gap-2">
               <Button onClick={handleExportPdf} disabled={exporting !== null} className="w-full sm:w-auto">
                 {exporting === "pdf" ? <Spinner size="sm" className="mr-2 text-accent-foreground" /> : <Download className="h-4 w-4 mr-2" />}
-                {exporting === "pdf" ? "Generating..." : "Download PDF"}
+                {exporting === "pdf" ? t("reports.exporting") : t("reports.export_pdf")}
               </Button>
               <Button onClick={handleExportXlsx} disabled={exporting !== null} variant="outline" className="w-full sm:w-auto">
                 {exporting === "xlsx" ? <Spinner size="sm" className="mr-2" /> : <Sheet className="h-4 w-4 mr-2" />}
-                {exporting === "xlsx" ? "Generating..." : "Download Excel"}
+                {exporting === "xlsx" ? t("reports.exporting") : t("reports.export_xlsx")}
               </Button>
             </div>
           </CardContent>
@@ -96,22 +95,22 @@ export default function ExportReportPage() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-success" />
-              Report Tips
+              {t("reports.tips_title")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2 text-sm text-muted">
               <li className="flex items-start gap-2">
                 <span className="text-accent">•</span>
-                Update your controls with accurate status and risk levels before generating the report for the most useful analysis.
+                {t("reports.tip1")}
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-accent">•</span>
-                The AI executive summary requires an active AI connector (Ollama, OpenAI, or Anthropic) configured in Settings.
+                {t("reports.tip2")}
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-accent">•</span>
-                Quick Wins are ranked by IG1 priority first, then by risk level and implementation effort.
+                {t("reports.tip3")}
               </li>
             </ul>
           </CardContent>

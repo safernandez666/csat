@@ -3,18 +3,20 @@ import { Layout } from "../components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { formatDate } from "../lib/utils";
 import { FileText, ExternalLink } from "lucide-react";
+import { useTranslation } from "../hooks/use-translation";
 
 export default function EvidencePage() {
+  const { t } = useTranslation();
   const { data, loading, error } = useEvidence();
 
   return (
-    <Layout title="Evidence" subtitle="All uploaded evidence across controls">
+    <Layout title={t("evidence_page.title")} subtitle={t("evidence_page.subtitle")}>
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Evidence Library</CardTitle>
+          <CardTitle className="text-base">{t("evidence_page.title")}</CardTitle>
         </CardHeader>
         <CardContent>
-          {loading && <p className="text-sm text-muted">Loading...</p>}
+          {loading && <p className="text-sm text-muted">{t("common.loading")}</p>}
           {error && <p className="text-sm text-danger">{error}</p>}
           <div className="space-y-2">
             {data?.map((ev) => (
@@ -22,7 +24,7 @@ export default function EvidencePage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-accent" />
-                    <span className="text-sm font-medium">{ev.file_name || "Note"}</span>
+                    <span className="text-sm font-medium">{ev.file_name || t("control_detail.comments")}</span>
                     {ev.external_link && (
                       <a href={ev.external_link} target="_blank" rel="noreferrer" className="text-accent hover:underline">
                         <ExternalLink className="h-3 w-3" />
@@ -31,13 +33,13 @@ export default function EvidencePage() {
                   </div>
                   {ev.note && <p className="text-xs text-muted mt-1">{ev.note}</p>}
                   <div className="text-xs text-muted mt-1">
-                    Control #{ev.control_id} • by {ev.uploader_name} • {formatDate(ev.created_at)}
+                    {t("nav.controls")} #{ev.control_id} • {ev.uploader_name} • {formatDate(ev.created_at)}
                   </div>
                 </div>
               </div>
             ))}
             {!loading && data?.length === 0 && (
-              <p className="text-sm text-muted">No evidence uploaded yet.</p>
+              <p className="text-sm text-muted">{t("evidence_page.empty")}</p>
             )}
           </div>
         </CardContent>

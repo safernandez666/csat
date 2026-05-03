@@ -1,36 +1,39 @@
 import { useMemo, useState } from "react";
 import { Layout } from "../components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { Select } from "../components/ui/select";
+import { SafeguardStatusBadge, SAFEGUARD_STATUS_OPTIONS } from "../components/safeguard-status-badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
 import { useControls } from "../hooks/use-api";
 import { api } from "../lib/api";
-import { Shield, ShieldCheck } from "lucide-react";
+import { Shield, ShieldCheck, MoreHorizontal, Loader2 } from "lucide-react";
 import type { Control, Safeguard } from "../types";
+import { useTranslation } from "../hooks/use-translation";
+import { localizeControl } from "../lib/cis-catalog-i18n";
 
 type IG = "ig1" | "ig2" | "ig3";
 
-const IG_META: Record<IG, { label: string; sub: string; textClass: string; bgClass: string }> = {
-  ig1: { label: "IG1", sub: "Wave 1 — Essential", textClass: "text-success", bgClass: "bg-success" },
-  ig2: { label: "IG2", sub: "Wave 2 — Intermediate", textClass: "text-info", bgClass: "bg-info" },
-  ig3: { label: "IG3", sub: "Wave 3 — Advanced", textClass: "text-purple", bgClass: "bg-purple-500" },
+const IG_META: Record<IG, { label: string; subKey: string; textClass: string; bgClass: string }> = {
+  ig1: { label: "IG1", subKey: "waves.ig1.sub", textClass: "text-success", bgClass: "bg-success" },
+  ig2: { label: "IG2", subKey: "waves.ig2.sub", textClass: "text-info", bgClass: "bg-info" },
+  ig3: { label: "IG3", subKey: "waves.ig3.sub", textClass: "text-purple", bgClass: "bg-purple-500" },
 };
 
 const IG_KEYS: IG[] = ["ig1", "ig2", "ig3"];
 
-const STATUS_LABEL: Record<string, string> = {
-  not_implemented: "Not Implemented",
-  in_progress: "In Progress",
-  implemented: "Implemented",
-};
-
-const STATUS_CLASS: Record<string, string> = {
-  not_implemented: "text-muted",
-  in_progress: "text-info",
-  implemented: "text-success",
-};
-
 export default function ImplementationWavesPage() {
-  const { data: controls, loading, refresh } = useControls();
+  const { t, lang } = useTranslation();
+  const { data: rawControls, loading, refresh } = useControls();
+  const controls = useMemo(
+    () => (rawControls ? rawControls.map((c) => localizeControl(c, lang)) : null),
+    [rawControls, lang]
+  );
   const [activeIG, setActiveIG] = useState<IG>("ig1");
   const [hideImplemented, setHideImplemented] = useState(true);
   const [savingId, setSavingId] = useState<number | null>(null);
@@ -79,7 +82,7 @@ export default function ImplementationWavesPage() {
       await api.updateSafeguard(controlId, sgId, newStatus);
       refresh();
     } catch (err: any) {
-      alert(err.message || "Failed to update safeguard");
+      alert(err.message || t("control_detail.update_failed"));
     } finally {
       setSavingId(null);
     }
@@ -87,8 +90,8 @@ export default function ImplementationWavesPage() {
 
   return (
     <Layout
-      title="Implementation Waves"
-      subtitle="Plan your compliance one wave at a time — IG1 → IG2 → IG3"
+      title={t("waves.title")}
+      subtitle={t("waves.subtitle")}
     >
       <div className="space-y-6">
         {/* Wave selector */}
@@ -112,11 +115,11 @@ export default function ImplementationWavesPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className={`text-sm font-bold ${meta.textClass}`}>{meta.label}</span>
-                    <span className="text-xs text-muted">{meta.sub}</span>
+                    <span className="text-xs text-muted">{t(meta.subKey)}</span>
                   </div>
                   {isActive && (
                     <span className="text-[10px] font-mono uppercase tracking-wider text-accent">
-                      Active
+                      {t("waves.active")}
                     </span>
                   )}
                 </div>
@@ -145,8 +148,13 @@ export default function ImplementationWavesPage() {
             </span>
             {" — "}
             {totalActivePending > 0
-              ? `${totalActivePending} safeguard${totalActivePending === 1 ? "" : "s"} pending across ${groups.length} control${groups.length === 1 ? "" : "s"}`
-              : `All ${totalActive} safeguards implemented`}
+              ? t("waves.pending_summary", {
+                  pending: totalActivePending,
+                  plural: totalActivePending === 1 ? "" : "s",
+                  controls: groups.length,
+                  ctrlWord: t(groups.length === 1 ? "common.control_word" : "common.controls_word"),
+                })
+              : t("waves.all_implemented", { total: totalActive })}
           </div>
           <label className="flex items-center gap-2 text-xs text-muted cursor-pointer select-none">
             <input
@@ -155,14 +163,14 @@ export default function ImplementationWavesPage() {
               onChange={(e) => setHideImplemented(e.target.checked)}
               className="rounded border-border"
             />
-            Hide implemented
+            {t("waves.hide_implemented")}
           </label>
         </div>
 
         {/* Body */}
         {loading && !controls && (
           <Card>
-            <CardContent className="py-8 text-center text-sm text-muted">Loading…</CardContent>
+            <CardContent className="py-8 text-center text-sm text-muted">{t("waves.loading")}</CardContent>
           </Card>
         )}
 
@@ -171,11 +179,11 @@ export default function ImplementationWavesPage() {
             <CardContent className="py-12 text-center">
               <ShieldCheck className="mx-auto h-10 w-10 text-success mb-3" />
               <p className="text-sm font-medium">
-                Nothing pending in {IG_META[activeIG].label} with the current filter.
+                {t("waves.empty", { ig: IG_META[activeIG].label })}
               </p>
               {hideImplemented && totalActiveImpl < totalActive && (
                 <p className="mt-1 text-xs text-muted">
-                  Uncheck "Hide implemented" to review what's already done.
+                  {t("waves.empty_hint")}
                 </p>
               )}
             </CardContent>
@@ -198,52 +206,72 @@ export default function ImplementationWavesPage() {
                       <Shield className="h-4 w-4 text-accent shrink-0" />
                       <span className="text-xs font-mono text-muted">CIS {control.cis_id}</span>
                       <span className="text-[10px] uppercase font-bold tracking-wider text-muted">
-                        {control.group}
+                        {t(`group.${control.group.toLowerCase()}`)}
                       </span>
                     </div>
                     <CardTitle className="text-base mt-1">{control.name}</CardTitle>
                     <div className="text-xs text-muted mt-1">
-                      {igImpl}/{igTotal} {IG_META[activeIG].label} safeguards implemented · {ctrlPct}%
+                      {t("waves.controls_summary", { impl: igImpl, total: igTotal, ig: IG_META[activeIG].label, pct: ctrlPct })}
                     </div>
                   </div>
                   <a
                     href={`/controls/${control.id}`}
                     className="text-xs text-muted hover:text-accent shrink-0 mt-1"
                   >
-                    Open control →
+                    {t("controls.open")}
                   </a>
                 </div>
               </CardHeader>
               <CardContent className="space-y-2">
-                {safeguards.map((sg) => (
-                  <div
-                    key={sg.id}
-                    className="flex items-start justify-between gap-3 rounded-lg border border-border p-3"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono text-muted">{sg.safeguard_id}</span>
-                        <span className={`text-[10px] uppercase font-bold ${STATUS_CLASS[sg.implementation_status] || "text-muted"}`}>
-                          {STATUS_LABEL[sg.implementation_status] || sg.implementation_status}
-                        </span>
-                      </div>
-                      <div className="text-sm font-medium mt-0.5">{sg.title}</div>
-                      {sg.description && (
-                        <p className="mt-1 text-xs text-muted line-clamp-2">{sg.description}</p>
-                      )}
-                    </div>
-                    <Select
-                      value={sg.implementation_status}
-                      disabled={savingId === sg.id}
-                      onChange={(e) => updateStatus(control.id, sg.id, e.target.value)}
-                      className="w-40 text-sm shrink-0"
+                {safeguards.map((sg) => {
+                  const isSaving = savingId === sg.id;
+                  return (
+                    <div
+                      key={sg.id}
+                      className="flex items-start justify-between gap-3 rounded-lg border border-border p-3"
                     >
-                      <option value="not_implemented">Not Implemented</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="implemented">Implemented</option>
-                    </Select>
-                  </div>
-                ))}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-mono text-muted">{sg.safeguard_id}</span>
+                          <SafeguardStatusBadge status={sg.implementation_status} />
+                        </div>
+                        <div className="text-sm font-medium mt-1">{sg.title}</div>
+                        {sg.description && (
+                          <p className="mt-1 text-xs text-muted line-clamp-2">{sg.description}</p>
+                        )}
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          disabled={isSaving}
+                          aria-label={t("control_detail.change_status_aria")}
+                          className="size-8 shrink-0 rounded-md border border-transparent hover:border-border disabled:opacity-50"
+                        >
+                          {isSaving ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <MoreHorizontal className="size-4" />
+                          )}
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuLabel>{t("control_detail.change_status")}</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          {SAFEGUARD_STATUS_OPTIONS.map((opt) => (
+                            <DropdownMenuItem
+                              key={opt.value}
+                              onClick={() => updateStatus(control.id, sg.id, opt.value)}
+                              disabled={isSaving || opt.value === sg.implementation_status}
+                            >
+                              <SafeguardStatusBadge status={opt.value} className="text-[11px]" />
+                              {opt.value === sg.implementation_status && (
+                                <span className="ml-auto text-[10px] text-muted">{t("control_detail.current")}</span>
+                              )}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
           );
