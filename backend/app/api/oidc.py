@@ -29,9 +29,10 @@ import httpx
 from authlib.jose import jwt as authlib_jwt
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.api.deps import get_db, require_admin
 from app.core.config import settings
 from app.core.security import create_access_token, create_refresh_token
 from app.models.settings import Setting
@@ -281,3 +282,92 @@ def oidc_callback(request: Request, db: Session = Depends(get_db)):
     resp.delete_cookie("oidc_state")
     resp.delete_cookie("oidc_verifier")
     return resp
+
+
+# ---------------------------------------------------------------------------
+# Admin-only: validate a tentative OIDC config without saving it
+# ---------------------------------------------------------------------------
+
+class OIDCTestRequest(BaseModel):
+    issuer_url: str
+    client_id: str | None = None
+    client_secret: str | None = None
+
+
+@router.post("/test")
+def oidc_test(req: OIDCTestRequest, _admin: User = Depends(require_admin)) -> dict:
+    """Probe the IdP without persisting anything.
+
+    Hits the discovery endpoint, parses it, and confirms the URLs we care
+    about (authorization, token, jwks, userinfo) are present. We deliberately
+    avoid actually exchanging anything — that requires a real user — so this
+    is a "is the config plausibly correct" check, not a full login simulation.
+    """
+    issuer = req.issuer_url.strip().rstrip("/")
+    if not issuer:
+        return {"status": "error", "detail": "Issuer URL is required."}
+
+    discovery_url = f"{issuer}/.well-known/openid-configuration"
+    try:
+        with httpx.Client(timeout=10) as client:
+            resp = client.get(discovery_url)
+    except httpx.ConnectError as e:
+        return {
+            "status": "error",
+            "detail": f"Cannot connect to {issuer}. Check the URL and that the IdP is reachable from CSAT. ({e})",
+        }
+    except httpx.TimeoutException:
+        return {
+            "status": "error",
+            "detail": f"Timeout reaching {discovery_url}. The IdP is slow or unreachable.",
+        }
+    except Exception as e:  # noqa: BLE001
+        return {"status": "error", "detail": f"Network error: {e}"}
+
+    if resp.status_code == 404:
+        return {
+            "status": "error",
+            "detail": (
+                f"{discovery_url} returned 404. Double-check the Issuer URL — "
+                "for Keycloak it's `<base>/realms/<realm>`, for Entra ID "
+                "`https://login.microsoftonline.com/<tenant>/v2.0`."
+            ),
+        }
+    if resp.status_code != 200:
+        return {
+            "status": "error",
+            "detail": f"Discovery endpoint returned HTTP {resp.status_code}.",
+        }
+
+    try:
+        doc = resp.json()
+    except ValueError:
+        return {"status": "error", "detail": "Discovery endpoint did not return valid JSON."}
+
+    required = ["authorization_endpoint", "token_endpoint", "jwks_uri"]
+    missing = [k for k in required if not doc.get(k)]
+    if missing:
+        return {
+            "status": "error",
+            "detail": f"Discovery doc is missing required fields: {', '.join(missing)}",
+        }
+
+    # Try to fetch the JWKS too — that's the next thing we'd hit at login time
+    try:
+        with httpx.Client(timeout=10) as client:
+            jwks_resp = client.get(doc["jwks_uri"])
+        if jwks_resp.status_code != 200:
+            return {
+                "status": "error",
+                "detail": f"JWKS endpoint returned HTTP {jwks_resp.status_code}.",
+            }
+    except Exception as e:  # noqa: BLE001
+        return {"status": "error", "detail": f"Could not reach JWKS: {e}"}
+
+    return {
+        "status": "ok",
+        "detail": "Discovery + JWKS reachable. Config looks plausible.",
+        "issuer": doc.get("issuer"),
+        "authorization_endpoint": doc.get("authorization_endpoint"),
+        "token_endpoint": doc.get("token_endpoint"),
+    }

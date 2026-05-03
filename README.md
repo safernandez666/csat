@@ -249,10 +249,17 @@ console: **User Federation → Add provider → ldap**, point at your DC, config
 the bind DN and search base, then enable group sync. Map the AD groups you want
 to expose as `csat-admins` / `csat-analysts` / etc. CSAT does not change.
 
+### Other providers
+
 The same pattern works with **Entra ID (Azure AD)**, **Okta**, **ADFS** or any
 other OIDC-compliant provider — adjust `issuer_url`, `client_id` and
-`client_secret` accordingly. The group claim must be present in either the ID
-token or the userinfo response, with one entry per group the user belongs to.
+`client_secret` accordingly. Step-by-step setup guides:
+
+- [Entra ID (Azure AD)](./docs/sso/entra-id.md) — including the groups-claim
+  configuration that Entra needs.
+- [Okta](./docs/sso/okta.md) — including the custom claim that exposes group
+  membership in the ID token.
+- [Index of all SSO guides](./docs/sso/README.md).
 
 ### Production checklist
 

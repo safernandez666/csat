@@ -253,10 +253,17 @@ Keycloak: **User Federation → Add provider → ldap**, apuntá al DC, configur
 bind DN y search base, y activá group sync. Mapeá los grupos AD que querés
 exponer como `csat-admins` / `csat-analysts` / etc. CSAT no cambia.
 
+### Otros proveedores
+
 El mismo patrón sirve para **Entra ID (Azure AD)**, **Okta**, **ADFS** o
-cualquier IdP OIDC — ajustá `issuer_url`, `client_id` y `client_secret`. El
-groups claim debe estar presente en el ID token o en la respuesta de
-userinfo, con un entry por cada grupo del usuario.
+cualquier IdP OIDC — ajustá `issuer_url`, `client_id` y `client_secret`.
+Guías paso a paso:
+
+- [Entra ID (Azure AD)](./docs/sso/entra-id.md) — incluye la configuración
+  del groups claim que Entra necesita.
+- [Okta](./docs/sso/okta.md) — incluye el custom claim que expone los grupos
+  en el ID token.
+- [Índice de todas las guías SSO](./docs/sso/README.md).
 
 ### Checklist de producción
 

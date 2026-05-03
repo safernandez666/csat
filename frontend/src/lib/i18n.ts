@@ -267,6 +267,25 @@ const en: Dict = {
   "settings.save_config": "Save configuration",
   "settings.toast.saved": "Settings saved",
   "settings.toast.failed": "Failed to save",
+
+  // Single Sign-On (OIDC)
+  "settings.sso.title": "Single Sign-On (SSO)",
+  "settings.sso.help": "Configure OIDC SSO with Keycloak, Entra ID (Azure AD), Okta or any OIDC-compliant provider. When enabled, a 'Sign in with corporate SSO' button appears on the login screen.",
+  "settings.sso.enable": "Enable SSO",
+  "settings.sso.issuer_url": "Issuer URL",
+  "settings.sso.client_id": "Client ID",
+  "settings.sso.client_secret": "Client Secret",
+  "settings.sso.group_mapping": "Group → Role mapping",
+  "settings.sso.group_mapping_help": "Group name (or GUID for Entra ID) in your IdP that grants each CSAT role. Leave a row blank to disable that role from being granted via SSO.",
+  "settings.sso.default_role": "Default role",
+  "settings.sso.default_role_help": "Granted to any SSO user whose IdP groups don't match any mapping above. Leave empty to deny those users.",
+  "settings.sso.default_none": "Deny if no group matches",
+  "settings.sso.test": "Test connection",
+  "settings.sso.testing": "Testing...",
+  "settings.sso.test_ok": "Reachable. The IdP responded to the discovery URL.",
+  "settings.sso.test_failed": "Could not reach the IdP",
+  "settings.sso.saved": "SSO configuration saved",
+  "settings.sso.save_failed": "Failed to save SSO configuration",
   "settings.remove_logo_confirm": "Remove company logo?",
 
   // Audit logs
@@ -609,6 +628,25 @@ const es: Dict = {
   "settings.save_config": "Guardar configuración",
   "settings.toast.saved": "Configuración guardada",
   "settings.toast.failed": "No se pudo guardar",
+
+  // Single Sign-On (OIDC)
+  "settings.sso.title": "Single Sign-On (SSO)",
+  "settings.sso.help": "Configurá SSO via OIDC con Keycloak, Entra ID (Azure AD), Okta o cualquier proveedor OIDC. Cuando está activo, aparece un botón 'Sign in with corporate SSO' en la pantalla de login.",
+  "settings.sso.enable": "Activar SSO",
+  "settings.sso.issuer_url": "Issuer URL",
+  "settings.sso.client_id": "Client ID",
+  "settings.sso.client_secret": "Client Secret",
+  "settings.sso.group_mapping": "Mapeo Grupo → Rol",
+  "settings.sso.group_mapping_help": "Nombre del grupo (o GUID en Entra ID) en tu IdP que otorga cada rol de CSAT. Dejá vacío para que el rol no se otorgue por SSO.",
+  "settings.sso.default_role": "Rol por defecto",
+  "settings.sso.default_role_help": "Se otorga a cualquier user de SSO cuyos grupos no matcheen el mapeo. Dejá vacío para denegar a esos users.",
+  "settings.sso.default_none": "Denegar si ningún grupo matchea",
+  "settings.sso.test": "Probar conexión",
+  "settings.sso.testing": "Probando...",
+  "settings.sso.test_ok": "Alcanzable. El IdP respondió al discovery URL.",
+  "settings.sso.test_failed": "No se pudo alcanzar el IdP",
+  "settings.sso.saved": "Configuración SSO guardada",
+  "settings.sso.save_failed": "No se pudo guardar la configuración SSO",
   "settings.remove_logo_confirm": "¿Eliminar el logo de la empresa?",
 
   // Audit logs
@@ -951,6 +989,25 @@ const pt: Dict = {
   "settings.save_config": "Salvar configuração",
   "settings.toast.saved": "Configuração salva",
   "settings.toast.failed": "Falha ao salvar",
+
+  // Single Sign-On (OIDC)
+  "settings.sso.title": "Single Sign-On (SSO)",
+  "settings.sso.help": "Configure SSO via OIDC com Keycloak, Entra ID (Azure AD), Okta ou qualquer provedor OIDC. Quando ativo, um botão 'Sign in with corporate SSO' aparece na tela de login.",
+  "settings.sso.enable": "Ativar SSO",
+  "settings.sso.issuer_url": "Issuer URL",
+  "settings.sso.client_id": "Client ID",
+  "settings.sso.client_secret": "Client Secret",
+  "settings.sso.group_mapping": "Mapeamento Grupo → Papel",
+  "settings.sso.group_mapping_help": "Nome do grupo (ou GUID em Entra ID) no seu IdP que concede cada papel de CSAT. Deixe vazio para que o papel não seja concedido por SSO.",
+  "settings.sso.default_role": "Papel padrão",
+  "settings.sso.default_role_help": "Concedido a qualquer usuário de SSO cujos grupos não coincidam com o mapeamento. Deixe vazio para negar.",
+  "settings.sso.default_none": "Negar se nenhum grupo coincidir",
+  "settings.sso.test": "Testar conexão",
+  "settings.sso.testing": "Testando...",
+  "settings.sso.test_ok": "Acessível. O IdP respondeu ao discovery URL.",
+  "settings.sso.test_failed": "Não foi possível alcançar o IdP",
+  "settings.sso.saved": "Configuração de SSO salva",
+  "settings.sso.save_failed": "Falha ao salvar configuração de SSO",
   "settings.remove_logo_confirm": "Remover o logo da empresa?",
 
   // Audit logs
