@@ -21,7 +21,7 @@ export function Layout({ children, title, subtitle }: LayoutProps) {
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/20 overflow-hidden">
+            <div className="flex size-10 items-center justify-center overflow-hidden rounded-xl bg-primary shadow-md">
               {settings.company_logo_url ? (
                 <img
                   src={settings.company_logo_url}
@@ -29,7 +29,7 @@ export function Layout({ children, title, subtitle }: LayoutProps) {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <ShieldCheck className="h-5 w-5 text-white" />
+                <ShieldCheck className="size-5 text-primary-foreground" />
               )}
             </div>
             <div>

@@ -45,13 +45,13 @@ export function NavSidebar() {
     }
   };
 
-  const navItem = (href: string, icon: React.ReactNode, label: string, color: string) => {
+  const navItem = (href: string, icon: React.ReactNode, label: string) => {
     const isActive = path === href || (href !== "/" && path.startsWith(href));
     return (
       <a
         href={href}
-        className={`group relative flex h-10 w-10 items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none ${
-          isActive ? `${color} bg-card` : `hover:${color}`
+        className={`group relative flex size-10 items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none ${
+          isActive ? "bg-accent/10 text-accent" : "text-muted hover:bg-card hover:text-foreground"
         }`}
         aria-label={label}
       >
@@ -66,19 +66,19 @@ export function NavSidebar() {
   return (
     <div className="fixed left-0 top-0 z-40 flex h-screen w-14 flex-col items-center border-r border-border bg-card/95 pt-20 pb-4 backdrop-blur">
       <div className="flex flex-col items-center gap-1 flex-1">
-        {navItem("/", <LayoutDashboard className="h-5 w-5 text-info" />, "Dashboard", "bg-info-dim")}
-        {navItem("/assistant", <Bot className="h-5 w-5 text-accent" />, "AI Assistant", "bg-accent/10")}
-        {navItem("/quick-wins", <Zap className="h-5 w-5 text-warning" />, "Quick Wins", "bg-warning-dim")}
-        {navItem("/waves", <Layers className="h-5 w-5 text-purple" />, "Implementation Waves", "bg-purple-dim")}
-        {navItem("/controls", <Shield className="h-5 w-5 text-success" />, "CIS Controls", "bg-success-dim")}
-        {navItem("/evidence", <FileText className="h-5 w-5 text-warning" />, "Evidence", "bg-warning-dim")}
-        {navItem("/users", <Users className="h-5 w-5 text-purple" />, "Users", "bg-purple-dim")}
-        {navItem("/audit-logs", <ClipboardList className="h-5 w-5 text-info" />, "Audit Logs", "bg-info-dim")}
-        {navItem("/export-report", <Download className="h-5 w-5 text-danger" />, "Export Report", "bg-danger-dim")}
+        {navItem("/", <LayoutDashboard className="size-5" />, "Dashboard")}
+        {navItem("/assistant", <Bot className="size-5" />, "AI Assistant")}
+        {navItem("/quick-wins", <Zap className="size-5" />, "Quick Wins")}
+        {navItem("/waves", <Layers className="size-5" />, "Implementation Waves")}
+        {navItem("/controls", <Shield className="size-5" />, "CIS Controls")}
+        {navItem("/evidence", <FileText className="size-5" />, "Evidence")}
+        {navItem("/users", <Users className="size-5" />, "Users")}
+        {navItem("/audit-logs", <ClipboardList className="size-5" />, "Audit Logs")}
+        {navItem("/export-report", <Download className="size-5" />, "Export Report")}
       </div>
 
       <div className="flex flex-col items-center gap-1">
-        {navItem("/settings", <Settings className="h-5 w-5 text-muted" />, "Settings", "bg-card")}
+        {navItem("/settings", <Settings className="size-5" />, "Settings")}
 
         <button
           type="button"

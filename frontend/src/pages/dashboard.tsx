@@ -7,16 +7,12 @@ import { ControlStatusBadge } from "../components/control-status-badge";
 
 import { formatDateShort } from "../lib/utils";
 import {
-  XAxis, YAxis, CartesianGrid,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  AreaChart, Area,
 } from "recharts";
 import {
   ChartContainer,
   ChartTooltip as ShadTooltip,
   ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
 } from "../components/ui/chart";
 import { Calendar, Activity, Target, AlertCircle } from "lucide-react";
 import { Spinner } from "../components/ui/spinner";
@@ -55,22 +51,6 @@ const controlChartConfig = {
 };
 
 
-
-/* Mock historical data for area chart */
-const areaData = [
-  { month: "Jan", implemented: 2, in_progress: 3, not_implemented: 13 },
-  { month: "Feb", implemented: 3, in_progress: 4, not_implemented: 11 },
-  { month: "Mar", implemented: 5, in_progress: 3, not_implemented: 10 },
-  { month: "Apr", implemented: 6, in_progress: 4, not_implemented: 8 },
-  { month: "May", implemented: 8, in_progress: 3, not_implemented: 7 },
-  { month: "Jun", implemented: 10, in_progress: 2, not_implemented: 6 },
-];
-
-const areaConfig = {
-  implemented: { label: "Implemented", color: "var(--color-success)" },
-  in_progress: { label: "In Progress", color: "var(--color-info)" },
-  not_implemented: { label: "Not Implemented", color: "var(--color-danger)" },
-};
 
 export default function DashboardPage() {
   const { data, radar, igProgress, controlScores, loading, error } = useDashboard();
@@ -296,56 +276,12 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Donut Active + Area Chart Gradient */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <StatusBarChart
-            implemented={s.implemented}
-            inProgress={s.in_progress}
-            notImplemented={s.not_implemented}
-            needsReview={s.needs_review}
-          />
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Compliance Trend (6 Months)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={areaConfig} className="aspect-video h-64">
-                <AreaChart data={areaData} margin={{ left: 12, right: 12 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                  <XAxis dataKey="month" tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <ShadTooltip content={<ChartTooltipContent />} />
-                  <defs>
-                    <linearGradient id="fillImplemented" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--color-implemented)" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="var(--color-implemented)" stopOpacity={0.05} />
-                    </linearGradient>
-                    <linearGradient id="fillInProgress" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--color-in_progress)" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="var(--color-in_progress)" stopOpacity={0.05} />
-                    </linearGradient>
-                  </defs>
-                  <Area
-                    type="monotone"
-                    dataKey="implemented"
-                    stroke="var(--color-implemented)"
-                    fill="url(#fillImplemented)"
-                    strokeWidth={2}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="in_progress"
-                    stroke="var(--color-in_progress)"
-                    fill="url(#fillInProgress)"
-                    strokeWidth={2}
-                  />
-                  <ChartLegend content={<ChartLegendContent />} />
-                </AreaChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-        </div>
+        <StatusBarChart
+          implemented={s.implemented}
+          inProgress={s.in_progress}
+          notImplemented={s.not_implemented}
+          needsReview={s.needs_review}
+        />
 
         {/* Risk Distribution — visual cards instead of generic bars */}
         <Card>

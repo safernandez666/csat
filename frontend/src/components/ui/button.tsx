@@ -7,19 +7,21 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-accent text-accent-foreground shadow-lg hover:bg-accent/90 rounded-md",
+          "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 rounded-md",
+        success:
+          "bg-success text-success-foreground shadow-sm hover:bg-success/90 rounded-md",
         outline:
           "border border-border bg-transparent hover:bg-card hover:text-card-foreground shadow-sm rounded-md",
         secondary:
           "bg-card text-card-foreground hover:bg-card/80 shadow-sm rounded-md",
         ghost: "hover:bg-card hover:text-card-foreground rounded-md",
         destructive:
-          "bg-red-500 text-white shadow-lg hover:bg-danger rounded-md",
+          "bg-danger text-danger-foreground shadow-sm hover:bg-danger/90 rounded-md",
       },
       size: {
         default: "h-9 px-4 py-2",
         sm: "h-8 px-3 text-xs",
-        lg: "h-10 px-8",
+        lg: "h-11 px-8",
         icon: "h-9 w-9",
       },
     },

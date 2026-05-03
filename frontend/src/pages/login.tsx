@@ -38,11 +38,11 @@ export default function LoginPage() {
       <ParticlesBackground />
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/20 overflow-hidden">
+          <div className="flex size-12 items-center justify-center overflow-hidden rounded-xl bg-primary shadow-md">
             {publicSettings.company_logo_url ? (
               <img src={publicSettings.company_logo_url} alt="Logo" className="h-full w-full object-cover" />
             ) : (
-              <ShieldCheck className="h-6 w-6 text-white" />
+              <ShieldCheck className="size-6 text-primary-foreground" />
             )}
           </div>
           <div className="text-center">

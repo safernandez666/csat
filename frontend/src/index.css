@@ -16,8 +16,13 @@
   --color-ring: #18181b;
   --color-input: #e4e4e7;
 
+  /* Trust & Authority — primary CTA (navy slate) */
+  --color-primary: #0f172a;
+  --color-primary-foreground: #ffffff;
+
   /* Semantic — light mode (darker for contrast on white) */
   --color-success: #16a34a;
+  --color-success-foreground: #ffffff;
   --color-success-dim: #f0fdf4;
   --color-success-border: #bbf7d0;
 
@@ -30,6 +35,7 @@
   --color-warning-border: #fde68a;
 
   --color-danger: #dc2626;
+  --color-danger-foreground: #ffffff;
   --color-danger-dim: #fef2f2;
   --color-danger-border: #fecaca;
 
@@ -68,8 +74,13 @@
   --color-ring: #ffffff;
   --color-input: #27272a;
 
+  /* Trust & Authority — primary CTA (vivid trust blue on black) */
+  --color-primary: #2563eb;
+  --color-primary-foreground: #ffffff;
+
   /* Semantic — dark mode (brighter for contrast on black) */
   --color-success: #22c55e;
+  --color-success-foreground: #ffffff;
   --color-success-dim: rgba(34, 197, 94, 0.15);
   --color-success-border: rgba(34, 197, 94, 0.40);
 
@@ -82,6 +93,7 @@
   --color-warning-border: rgba(245, 158, 11, 0.40);
 
   --color-danger: #ef4444;
+  --color-danger-foreground: #ffffff;
   --color-danger-dim: rgba(239, 68, 68, 0.15);
   --color-danger-border: rgba(239, 68, 68, 0.40);
 
@@ -153,6 +165,12 @@ body {
 
 .animate-fade-in-up {
   animation: fade-in-up 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up {
+    animation: none;
+  }
 }
 
 @keyframes fadeIn {
