@@ -144,9 +144,6 @@ export default function ControlDetailPage() {
           {t("control_detail.refreshing")}
         </div>
       )}
-      {control.objective && (
-        <p className="text-sm text-muted max-w-3xl mb-4">{control.objective}</p>
-      )}
       <div className="space-y-6">
         {/* Edit panel */}
         <Card>
