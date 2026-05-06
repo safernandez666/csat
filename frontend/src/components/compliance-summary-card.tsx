@@ -100,19 +100,19 @@ export function ComplianceSummaryCard({
           {/* Top row: gauge + spider web */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex flex-col items-center gap-3">
-              <ChartContainer config={radialConfig} className="mx-auto h-36 w-36 shrink-0">
+              <ChartContainer config={radialConfig} className="mx-auto h-64 w-64 shrink-0">
                 <RadialBarChart
                   data={radialData}
                   endAngle={100}
-                  innerRadius={45}
-                  outerRadius={65}
+                  innerRadius={70}
+                  outerRadius={100}
                 >
                   <PolarGrid
                     gridType="circle"
                     radialLines={false}
                     stroke="none"
                     className="first:fill-muted last:fill-background"
-                    polarRadius={[60, 52]}
+                    polarRadius={[92, 80]}
                   />
                   <RadialBar dataKey="score" background cornerRadius={4} fill={gaugeColor} />
                   <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
@@ -122,7 +122,7 @@ export function ComplianceSummaryCard({
                       textAnchor="middle"
                       dominantBaseline="middle"
                       className="fill-foreground"
-                      style={{ fontSize: 18, fontWeight: 700 }}
+                      style={{ fontSize: 28, fontWeight: 700 }}
                     >
                       {score}%
                     </text>
