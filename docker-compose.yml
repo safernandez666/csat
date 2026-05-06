@@ -1,8 +1,6 @@
-version: '3.8'
-
 services:
   backend:
-    build: ./backend
+    image: safernandez666/csat-backend:latest
     container_name: csat-backend
     restart: unless-stopped
     environment:
@@ -31,7 +29,7 @@ services:
       start_period: 10s
 
   frontend:
-    build: ./frontend
+    image: safernandez666/csat-frontend:latest
     container_name: csat-frontend
     restart: unless-stopped
     ports:
