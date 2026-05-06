@@ -1,7 +1,7 @@
 import { useDashboard } from "../hooks/use-api";
 import { Layout } from "../components/layout";
 import { ComplianceSummaryCard } from "../components/compliance-summary-card";
-
+import { StatusBarChart } from "../components/status-bar-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { ControlStatusBadge } from "../components/control-status-badge";
 
@@ -45,11 +45,6 @@ const groupChartConfig = {
 
 const igChartConfig = {
   score: { label: "Score", color: "var(--color-success)" },
-};
-
-const controlChartConfig = {
-  current: { label: "Current", color: "var(--color-info)" },
-  target: { label: "Target", color: "var(--color-border)" },
 };
 
 
@@ -97,6 +92,7 @@ export default function DashboardPage() {
           inProgress={s.in_progress}
           notImplemented={s.not_implemented}
           needsReview={s.needs_review}
+          spiderData={spiderData}
         />
 
         {/* 18 Control badges grid */}
@@ -133,7 +129,7 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        {/* Three radars side by side — shadcn ChartContainer style */}
+        {/* Three analysis cards side by side — Group, IG, Status Breakdown */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card>
             <CardHeader>
@@ -227,57 +223,12 @@ export default function DashboardPage() {
             </Card>
           )}
 
-          {controlScores && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Target className="h-4 w-4 text-muted" />
-                  {t("dashboard.spider_18")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ChartContainer config={controlChartConfig} className="aspect-square h-72">
-                  <RadarChart data={spiderData}>
-                    <PolarGrid stroke="var(--color-border)" />
-                    <PolarAngleAxis dataKey="cis_id" tick={{ fill: "var(--color-muted-foreground)", fontSize: 9 }} />
-                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: "var(--color-muted)", fontSize: 9 }} />
-                    <Radar
-                      name="Target"
-                      dataKey="target"
-                      stroke="var(--color-border)"
-                      fill="var(--color-border)"
-                      fillOpacity={0.05}
-                      strokeWidth={1}
-                      strokeDasharray="4 4"
-                      dot={false}
-                    />
-                    <Radar
-                      name="Current"
-                      dataKey="current"
-                      stroke="var(--color-current)"
-                      fill="var(--color-current)"
-                      fillOpacity={0.15}
-                      strokeWidth={2.5}
-                      dot={{ r: 3, fill: "var(--color-background)", stroke: "var(--color-current)", strokeWidth: 2 }}
-                    />
-                    <ShadTooltip content={<ChartTooltipContent />} />
-                  </RadarChart>
-                </ChartContainer>
-                <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-xs text-muted">
-                  {["Basic", "Foundational", "Organizational"].map((g) => (
-                    <div key={g} className="flex items-center gap-1.5">
-                      <span
-                        className="inline-block h-2.5 w-2.5 rounded-full"
-                        style={{ backgroundColor: RADAR_COLORS[g] || "var(--color-muted)" }}
-                      />
-                      <span>{t(`group.${g.toLowerCase()}`)}</span>
-                    </div>
-                  ))}
-                  <span className="text-[10px]">{t("dashboard.spider_tooltip_hint")}</span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <StatusBarChart
+            implemented={s.implemented}
+            inProgress={s.in_progress}
+            notImplemented={s.not_implemented}
+            needsReview={s.needs_review}
+          />
         </div>
 
         {/* Risk Distribution — visual cards instead of generic bars */}
