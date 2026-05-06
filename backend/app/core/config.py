@@ -4,6 +4,8 @@ from typing import List
 
 DEFAULT_SECRET_KEY = "dev-secret-key-change-me"
 INSECURE_DOCKER_DEFAULT = "change-me-in-production"
+INSECURE_EXAMPLE_DEFAULT = "your-super-secret-key-change-this-in-production"
+INSECURE_BACKEND_EXAMPLE = "change-me-in-production-use-32-byte-random-string"
 
 
 class Settings(BaseSettings):
@@ -38,7 +40,7 @@ class Settings(BaseSettings):
         return self.env.lower() == "dev"
 
     def validate_runtime(self) -> None:
-        if not self.is_dev and self.secret_key in (DEFAULT_SECRET_KEY, INSECURE_DOCKER_DEFAULT, ""):
+        if not self.is_dev and self.secret_key in (DEFAULT_SECRET_KEY, INSECURE_DOCKER_DEFAULT, INSECURE_EXAMPLE_DEFAULT, INSECURE_BACKEND_EXAMPLE, ""):
             raise RuntimeError(
                 "SECRET_KEY is unset or using a known default. "
                 "Set SECRET_KEY in your environment, or set CSAT_ENV=dev for local development."
