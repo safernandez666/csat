@@ -17,8 +17,10 @@ from app.models.settings import Setting
 from app.models.evidence import Evidence
 from app.models.user import User
 from app.services.evidence_extractor import extract_text
+from app.services.control_service import get_control_summary
 from app.utils.cis_groups import get_cis_group
-from app.utils.safeguard_status import count_implemented
+from app.utils.safeguard_status import count_implemented, is_pending, safeguard_score
+from sqlalchemy import or_
 
 # Number of past messages (user + assistant pairs combined) to send to the LLM
 # as conversation context. Larger = better continuity but slower / costlier.
@@ -96,6 +98,94 @@ def _build_control_context(db: Session) -> str:
     return "\n".join(lines)
 
 
+def _extract_search_terms(query: str) -> list[str]:
+    """Extract meaningful search terms from the user query."""
+    # Remove common stop words and short tokens
+    stop = {"the", "and", "for", "are", "but", "not", "you", "all", "can", "had", "her", "was", "one", "our", "out", "day", "get", "has", "him", "his", "how", "man", "new", "now", "old", "see", "two", "way", "who", "boy", "did", "its", "let", "put", "say", "she", "too", "use", "que", "del", "por", "las", "los", "una", "con", "para", "como", "mas", "pero", "sus", "todo", "esta", "estos", "estas", "esse", "essa", "esse", "para", "como", "mais", "mas", "todos", "esta", "estes", "estas", "tell", "about", "what", "which", "there", "their", "have", "from", "they", "know", "want", "been", "good", "much", "some", "time", "very", "when", "come", "here", "just", "like", "long", "make", "many", "over", "such", "take", "than", "them", "well", "were"}
+    terms = []
+    for word in re.findall(r"[a-zA-Z0-9\u00e1\u00e9\u00ed\u00f3\u00fa\u00c1\u00c9\u00cd\u00d3\u00da\u00f1\u00d1]+", query.lower()):
+        if len(word) >= 3 and word not in stop:
+            terms.append(word)
+    return terms[:6]  # limit to 6 terms
+
+
+def _search_db_context(db: Session, query: str) -> str:
+    """Search controls, safeguards, evidence and users relevant to the user query."""
+    terms = _extract_search_terms(query)
+    if not terms:
+        return ""
+
+    lines: list[str] = []
+
+    # Search Controls
+    control_filters = []
+    for t in terms:
+        pattern = f"%{t}%"
+        control_filters.append(Control.cis_id.ilike(pattern))
+        control_filters.append(Control.name.ilike(pattern))
+        control_filters.append(Control.objective.ilike(pattern))
+    controls = db.query(Control).filter(or_(*control_filters)).limit(10).all()
+    if controls:
+        lines.append("MATCHING CONTROLS:")
+        for c in controls:
+            sg_summary = ", ".join(
+                f"{s.safeguard_id}={s.implementation_status}" for s in c.safeguards[:5]
+            )
+            if len(c.safeguards) > 5:
+                sg_summary += f" (+{len(c.safeguards)-5} more)"
+            lines.append(
+                f"- CIS {c.cis_id}: {c.name} | status={c.status} | risk={c.risk_level} | "
+                f"owner={c.owner.full_name if c.owner else 'Unassigned'} | safeguards=[{sg_summary}]"
+            )
+
+    # Search Safeguards
+    sg_filters = []
+    for t in terms:
+        pattern = f"%{t}%"
+        sg_filters.append(Safeguard.safeguard_id.ilike(pattern))
+        sg_filters.append(Safeguard.title.ilike(pattern))
+        sg_filters.append(Safeguard.description.ilike(pattern))
+    safeguards = db.query(Safeguard).filter(or_(*sg_filters)).limit(10).all()
+    if safeguards:
+        lines.append("MATCHING SAFEGUARDS:")
+        for s in safeguards:
+            lines.append(
+                f"- {s.safeguard_id}: {s.title} | status={s.implementation_status} | ig={s.ig} | "
+                f"control=CIS {s.control.cis_id}"
+            )
+
+    # Search Evidence
+    ev_filters = []
+    for t in terms:
+        pattern = f"%{t}%"
+        ev_filters.append(Evidence.note.ilike(pattern))
+        ev_filters.append(Evidence.file_name.ilike(pattern))
+    evidence_items = db.query(Evidence).filter(or_(*ev_filters)).limit(10).all()
+    if evidence_items:
+        lines.append("MATCHING EVIDENCE:")
+        for ev in evidence_items:
+            lines.append(
+                f"- Evidence #{ev.id}: {ev.file_name or ev.note or 'No description'} | "
+                f"control=CIS {ev.control.cis_id if ev.control else 'N/A'}"
+            )
+
+    # Search Users (owners)
+    user_filters = []
+    for t in terms:
+        pattern = f"%{t}%"
+        user_filters.append(User.full_name.ilike(pattern))
+        user_filters.append(User.email.ilike(pattern))
+    users = db.query(User).filter(or_(*user_filters)).limit(10).all()
+    if users:
+        lines.append("MATCHING USERS:")
+        for u in users:
+            owned = db.query(Control).filter(Control.owner_id == u.id).all()
+            owned_ids = ", ".join(f"CIS {c.cis_id}" for c in owned) if owned else "None"
+            lines.append(f"- {u.full_name} ({u.email}) | role={u.role} | owns: {owned_ids}")
+
+    return "\n".join(lines)
+
+
 class ChatHistoryItem(BaseModel):
     id: int
     role: str
@@ -123,6 +213,7 @@ def chat(req: ChatRequest, db: Session = Depends(get_db), current_user: User = D
         raise HTTPException(status_code=400, detail="AI not configured")
 
     context = _build_control_context(db)
+    search_context = _search_db_context(db, req.message)
     lang_setting = db.query(Setting).filter(Setting.key == "language").first()
     lang = str(lang_setting.value) if lang_setting and lang_setting.value else "en"
 
@@ -132,30 +223,40 @@ def chat(req: ChatRequest, db: Session = Depends(get_db), current_user: User = D
         "pt": "Responda SEMPRE em português.",
     }.get(lang, "Answer in English.")
 
+    system_content = (
+        "You are CSAT Assistant. Your ONLY job is to answer questions about "
+        "CIS Controls v8, cybersecurity compliance, safeguards, evidence, and the CSAT platform.\n\n"
+        f"Organization data to ground your answers:\n{context}\n\n"
+    )
+    if search_context:
+        system_content += (
+            f"SEARCH RESULTS relevant to the user's question:\n{search_context}\n\n"
+            "Use the search results above to answer the user's question accurately. "
+            "If the search results do not contain the answer, say so clearly.\n\n"
+        )
+    system_content += (
+        "RULES:\n"
+        "- Be concise, professional, and focused.\n"
+        f"- {lang_instruction}\n"
+        "- Use the organization data above when relevant.\n\n"
+        "OFF-TOPIC HANDLING — FOLLOW THESE EXAMPLES EXACTLY:\n"
+        "Example 1 — User: 'Write me a Python script to scan my network'\n"
+        "Assistant: I'm here to help with CIS Controls and your security posture. "
+        "Feel free to ask about controls, safeguards, evidence, or compliance recommendations.\n\n"
+        "Example 2 — User: 'How do I install Ubuntu?'\n"
+        "Assistant: I'm here to help with CIS Controls and your security posture. "
+        "Feel free to ask about controls, safeguards, evidence, or compliance recommendations.\n\n"
+        "Example 3 — User: 'Explain quantum computing'\n"
+        "Assistant: I'm here to help with CIS Controls and your security posture. "
+        "Feel free to ask about controls, safeguards, evidence, or compliance recommendations.\n\n"
+        "IMPORTANT: If the user asks about programming, general IT, networking tools, or anything "
+        "NOT related to CIS Controls / compliance / CSAT, you MUST ONLY reply with the exact sentence above. "
+        "Do NOT provide code, scripts, instructions, or explanations on off-topic subjects."
+    )
+
     system_prompt = {
         "role": "system",
-        "content": (
-            "You are CSAT Assistant. Your ONLY job is to answer questions about "
-            "CIS Controls v8, cybersecurity compliance, safeguards, evidence, and the CSAT platform.\n\n"
-            f"Organization data to ground your answers:\n{context}\n\n"
-            "RULES:\n"
-            "- Be concise, professional, and focused.\n"
-            f"- {lang_instruction}\n"
-            "- Use the organization data above when relevant.\n\n"
-            "OFF-TOPIC HANDLING — FOLLOW THESE EXAMPLES EXACTLY:\n"
-            "Example 1 — User: 'Write me a Python script to scan my network'\n"
-            "Assistant: I'm here to help with CIS Controls and your security posture. "
-            "Feel free to ask about controls, safeguards, evidence, or compliance recommendations.\n\n"
-            "Example 2 — User: 'How do I install Ubuntu?'\n"
-            "Assistant: I'm here to help with CIS Controls and your security posture. "
-            "Feel free to ask about controls, safeguards, evidence, or compliance recommendations.\n\n"
-            "Example 3 — User: 'Explain quantum computing'\n"
-            "Assistant: I'm here to help with CIS Controls and your security posture. "
-            "Feel free to ask about controls, safeguards, evidence, or compliance recommendations.\n\n"
-            "IMPORTANT: If the user asks about programming, general IT, networking tools, or anything "
-            "NOT related to CIS Controls / compliance / CSAT, you MUST ONLY reply with the exact sentence above. "
-            "Do NOT provide code, scripts, instructions, or explanations on off-topic subjects."
-        ),
+        "content": system_content,
     }
 
     # Few-shot examples injected into context to strengthen refusal for local LLMs.
@@ -249,9 +350,9 @@ def quick_wins(db: Session = Depends(get_db), _=Depends(require_viewer)):
     for c in controls:
         total = len(c.safeguards)
         implemented = count_implemented(c.safeguards)
-        not_impl_ig1 = sum(1 for s in c.safeguards if s.ig == "ig1" and s.implementation_status == "not_implemented")
-        not_impl_ig2 = sum(1 for s in c.safeguards if s.ig == "ig2" and s.implementation_status == "not_implemented")
-        not_impl_ig3 = sum(1 for s in c.safeguards if s.ig == "ig3" and s.implementation_status == "not_implemented")
+        pending_ig1 = sum(1 for s in c.safeguards if s.ig == "ig1" and is_pending(s))
+        pending_ig2 = sum(1 for s in c.safeguards if s.ig == "ig2" and is_pending(s))
+        pending_ig3 = sum(1 for s in c.safeguards if s.ig == "ig3" and is_pending(s))
         evidence_count = db.query(Evidence).filter(Evidence.control_id == c.id).count()
 
         # Skip fully implemented controls
@@ -262,14 +363,14 @@ def quick_wins(db: Session = Depends(get_db), _=Depends(require_viewer)):
         owner_score = 0 if c.owner_id else 1
         evidence_score = 0 if evidence_count > 0 else 1
         # IG1 is Wave 1 (essential) — heavily prioritize
-        ig1_score = (not_impl_ig1 * -5) + (not_impl_ig2 * -2) + (not_impl_ig3 * -1)
+        ig1_score = (pending_ig1 * -5) + (pending_ig2 * -2) + (pending_ig3 * -1)
 
         quick_win_score = risk_score + owner_score + evidence_score + ig1_score
 
         # Generate why and next_action based on heuristics
         reasons = []
-        if not_impl_ig1 > 0:
-            reasons.append(f"Has {not_impl_ig1} IG1 (Wave 1) safeguards pending — essential for basic security")
+        if pending_ig1 > 0:
+            reasons.append(f"Has {pending_ig1} IG1 (Wave 1) safeguards pending — essential for basic security")
         if c.risk_level in ("critical", "high"):
             reasons.append(f"{c.risk_level.capitalize()} risk level")
         if not c.owner_id:
@@ -279,8 +380,8 @@ def quick_wins(db: Session = Depends(get_db), _=Depends(require_viewer)):
 
         why = "; ".join(reasons) if reasons else "Control partially implemented"
 
-        if not_impl_ig1 > 0:
-            next_action = f"Start by implementing the {not_impl_ig1} IG1 safeguard(s) for this control"
+        if pending_ig1 > 0:
+            next_action = f"Start by implementing the {pending_ig1} IG1 safeguard(s) for this control"
         elif not c.owner_id:
             next_action = "Assign an owner and begin implementation planning"
         elif evidence_count == 0:
@@ -288,8 +389,8 @@ def quick_wins(db: Session = Depends(get_db), _=Depends(require_viewer)):
         else:
             next_action = "Continue implementing remaining safeguards"
 
-        effort = "low" if not_impl_ig1 <= 2 and c.risk_level in ("low", "medium") else "medium" if not_impl_ig1 <= 4 else "high"
-        impact = "high" if c.risk_level in ("critical", "high") or not_impl_ig1 >= 3 else "medium" if not_impl_ig1 >= 1 else "low"
+        effort = "low" if pending_ig1 <= 2 and c.risk_level in ("low", "medium") else "medium" if pending_ig1 <= 4 else "high"
+        impact = "high" if c.risk_level in ("critical", "high") or pending_ig1 >= 3 else "medium" if pending_ig1 >= 1 else "low"
 
         candidates.append({
             "cis_id": c.cis_id,
@@ -299,9 +400,9 @@ def quick_wins(db: Session = Depends(get_db), _=Depends(require_viewer)):
             "status": c.status,
             "safeguards_total": total,
             "safeguards_implemented": implemented,
-            "ig1_pending": not_impl_ig1,
-            "ig2_pending": not_impl_ig2,
-            "ig3_pending": not_impl_ig3,
+            "ig1_pending": pending_ig1,
+            "ig2_pending": pending_ig2,
+            "ig3_pending": pending_ig3,
             "evidence_count": evidence_count,
             "has_owner": bool(c.owner_id),
             "quick_win_score": quick_win_score,

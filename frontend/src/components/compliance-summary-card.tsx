@@ -1,8 +1,10 @@
 import { ShieldCheck, AlertTriangle, Clock, CheckCircle2, Eye } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { NumberTicker } from "./ui/number-ticker";
-import { ChartContainer, type ChartConfig } from "./ui/chart";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "./ui/chart";
 import { PolarGrid, PolarRadiusAxis, RadialBar, RadialBarChart } from "recharts";
+import { Bar, BarChart, CartesianGrid, Rectangle, XAxis } from "recharts";
+import type { BarShapeProps } from "recharts/types/cartesian/Bar";
 import { useTranslation } from "../hooks/use-translation";
 
 interface ComplianceSummaryCardProps {
@@ -69,6 +71,26 @@ export function ComplianceSummaryCard({
   const radialData = [{ score, fill: gaugeColor }];
   const pctText = (n: number) =>
     t("dashboard.metric.pct_of_total", { pct: total > 0 ? Math.round((n / total) * 100) : 0 });
+
+  const chartData = [
+    { status: "implemented", value: implemented, fill: "var(--color-success)" },
+    { status: "in_progress", value: inProgress, fill: "var(--color-info)" },
+    { status: "not_implemented", value: notImplemented, fill: "var(--color-danger)" },
+    { status: "needs_review", value: needsReview, fill: "var(--color-warning)" },
+  ];
+
+  const barChartConfig = {
+    value: { label: t("nav.controls") },
+    implemented: { label: t("status.implemented.long"), color: "var(--color-success)" },
+    in_progress: { label: t("status.in_progress.long"), color: "var(--color-info)" },
+    not_implemented: { label: t("status.not_implemented.long"), color: "var(--color-danger)" },
+    needs_review: { label: t("status.needs_review.long"), color: "var(--color-warning)" },
+  } satisfies ChartConfig;
+
+  const maxIndex = chartData.reduce(
+    (maxIdx, item, idx) => (item.value > chartData[maxIdx].value ? idx : maxIdx),
+    0
+  );
 
   return (
     <div className="space-y-6">
@@ -153,6 +175,49 @@ export function ComplianceSummaryCard({
           description={t("dashboard.metric.needs_review.desc")}
         />
       </div>
+
+      {/* Status Breakdown bar chart — integrated under Compliance Overview */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t("dashboard.status_breakdown")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer config={barChartConfig} className="aspect-video h-64">
+            <BarChart data={chartData} margin={{ left: 12, right: 12, top: 12, bottom: 12 }}>
+              <CartesianGrid vertical={false} stroke="var(--color-border)" />
+              <XAxis
+                dataKey="status"
+                tickLine={false}
+                tickMargin={10}
+                axisLine={false}
+                tickFormatter={(value) =>
+                  (barChartConfig[value as keyof typeof barChartConfig] as any)?.label || value
+                }
+                tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+              />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+              <Bar
+                dataKey="value"
+                strokeWidth={2}
+                radius={8}
+                shape={({ index, ...props }: BarShapeProps) =>
+                  index === maxIndex ? (
+                    <Rectangle
+                      {...props}
+                      fillOpacity={0.8}
+                      stroke={props.payload.fill}
+                      strokeDasharray={4}
+                      strokeDashoffset={4}
+                    />
+                  ) : (
+                    <Rectangle {...props} />
+                  )
+                }
+              />
+            </BarChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -96,3 +96,18 @@ def count_in_progress(safeguards: list["Safeguard"]) -> int:
 
 def count_not_applicable(safeguards: list["Safeguard"]) -> int:
     return sum(1 for s in safeguards if s.implementation_status == "not_applicable")
+
+
+def is_pending(sg: "Safeguard") -> bool:
+    """Return True if safeguard still needs work (not fully implemented and not excluded)."""
+    return sg.implementation_status not in ("implemented_all", "not_applicable")
+
+
+def count_pending(safeguards: list["Safeguard"]) -> int:
+    """Count safeguards that still need work (not fully implemented, excluding not_applicable)."""
+    return sum(1 for s in safeguards if is_pending(s))
+
+
+def count_pending_by_ig(safeguards: list["Safeguard"], ig: str) -> int:
+    """Count pending safeguards for a specific implementation group."""
+    return sum(1 for s in safeguards if s.ig == ig and is_pending(s))

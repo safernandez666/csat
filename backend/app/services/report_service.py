@@ -17,7 +17,7 @@ from app.models.settings import Setting
 from app.models.user import User
 from app.services.control_service import compute_compliance_score
 from app.utils.cis_groups import get_cis_group
-from app.utils.safeguard_status import count_implemented
+from app.utils.safeguard_status import count_implemented, is_pending
 
 
 # ---------------------------------------------------------------------------
@@ -141,20 +141,20 @@ def _compute_quick_wins(controls: list) -> list:
     for c in controls:
         total = len(c.safeguards)
         implemented = count_implemented(c.safeguards)
-        not_impl_ig1 = sum(1 for s in c.safeguards if s.ig == "ig1" and s.implementation_status == "not_implemented")
-        not_impl_ig2 = sum(1 for s in c.safeguards if s.ig == "ig2" and s.implementation_status == "not_implemented")
-        not_impl_ig3 = sum(1 for s in c.safeguards if s.ig == "ig3" and s.implementation_status == "not_implemented")
+        pending_ig1 = sum(1 for s in c.safeguards if s.ig == "ig1" and is_pending(s))
+        pending_ig2 = sum(1 for s in c.safeguards if s.ig == "ig2" and is_pending(s))
+        pending_ig3 = sum(1 for s in c.safeguards if s.ig == "ig3" and is_pending(s))
 
         risk_score = {"critical": 1, "high": 2, "medium": 3, "low": 4}.get(c.risk_level, 3)
         owner_score = 0 if c.owner_id else 1
         evidence_count = len(c.evidence) if hasattr(c, "evidence") else 0
         evidence_score = 0 if evidence_count > 0 else 1
-        ig1_score = (not_impl_ig1 * -5) + (not_impl_ig2 * -2) + (not_impl_ig3 * -1)
+        ig1_score = (pending_ig1 * -5) + (pending_ig2 * -2) + (pending_ig3 * -1)
         quick_win_score = risk_score + owner_score + evidence_score + ig1_score
 
         reasons = []
-        if not_impl_ig1 > 0:
-            reasons.append(f"Has {not_impl_ig1} IG1 safeguards pending")
+        if pending_ig1 > 0:
+            reasons.append(f"Has {pending_ig1} IG1 safeguards pending")
         if c.risk_level in ("critical", "high"):
             reasons.append(f"{c.risk_level.capitalize()} risk level")
         if not c.owner_id:
@@ -163,8 +163,8 @@ def _compute_quick_wins(controls: list) -> list:
             reasons.append("No evidence collected yet")
         why = "; ".join(reasons) if reasons else "Control partially implemented"
 
-        if not_impl_ig1 > 0:
-            next_action = f"Start by implementing the {not_impl_ig1} IG1 safeguard(s) for this control"
+        if pending_ig1 > 0:
+            next_action = f"Start by implementing the {pending_ig1} IG1 safeguard(s) for this control"
         elif not c.owner_id:
             next_action = "Assign an owner and begin implementation planning"
         elif evidence_count == 0:

@@ -1,7 +1,7 @@
 import { useDashboard } from "../hooks/use-api";
 import { Layout } from "../components/layout";
 import { ComplianceSummaryCard } from "../components/compliance-summary-card";
-import { StatusBarChart } from "../components/status-bar-chart";
+
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { ControlStatusBadge } from "../components/control-status-badge";
 
@@ -279,13 +279,6 @@ export default function DashboardPage() {
             </Card>
           )}
         </div>
-
-        <StatusBarChart
-          implemented={s.implemented}
-          inProgress={s.in_progress}
-          notImplemented={s.not_implemented}
-          needsReview={s.needs_review}
-        />
 
         {/* Risk Distribution — visual cards instead of generic bars */}
         <Card>
