@@ -27,9 +27,21 @@ interface ControlDetailPanelProps {
 export function ControlDetailPanel({ control, onUpdate, onControlChanged }: ControlDetailPanelProps) {
   const { t } = useTranslation();
   const [savingId, setSavingId] = useState<number | null>(null);
-  const implementedCount = control.safeguards.filter((s) => s.implementation_status === "implemented").length;
-  const totalSafeguards = control.safeguards.length;
-  const progress = totalSafeguards > 0 ? Math.round((implementedCount / totalSafeguards) * 100) : 0;
+  const applicableSafeguards = control.safeguards.filter((s) => s.implementation_status !== "not_applicable");
+  const totalSafeguards = applicableSafeguards.length;
+  const implementedCount = applicableSafeguards.filter((s) => s.implementation_status === "implemented_all").length;
+  const progress = totalSafeguards > 0
+    ? Math.round(
+        applicableSafeguards.reduce((acc, s) => {
+          const score =
+            s.implementation_status === "implemented_all" ? 1.0 :
+            s.implementation_status === "implemented_most" ? 0.75 :
+            s.implementation_status === "parts_implemented" ? 0.5 :
+            0.0;
+          return acc + score;
+        }, 0) / totalSafeguards * 100
+      )
+    : 0;
 
   const groupColors: Record<string, string> = {
     Basic: "text-success bg-success-dim border-success-border",
@@ -47,7 +59,7 @@ export function ControlDetailPanel({ control, onUpdate, onControlChanged }: Cont
     const ig = sg.ig || "ig1";
     if (igCounts[ig as keyof typeof igCounts]) {
       igCounts[ig as keyof typeof igCounts].total += 1;
-      if (sg.implementation_status === "implemented") {
+      if (sg.implementation_status === "implemented_all") {
         igCounts[ig as keyof typeof igCounts].implemented += 1;
       }
     }

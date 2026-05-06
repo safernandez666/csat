@@ -18,6 +18,7 @@ from app.models.evidence import Evidence
 from app.models.user import User
 from app.services.evidence_extractor import extract_text
 from app.utils.cis_groups import get_cis_group
+from app.utils.safeguard_status import count_implemented
 
 # Number of past messages (user + assistant pairs combined) to send to the LLM
 # as conversation context. Larger = better continuity but slower / costlier.
@@ -84,7 +85,7 @@ def _build_control_context(db: Session) -> str:
     lines = []
     for c in controls:
         total = len(c.safeguards)
-        implemented = sum(1 for s in c.safeguards if s.implementation_status == "implemented")
+        implemented = count_implemented(c.safeguards)
         evidence_count = db.query(Evidence).filter(Evidence.control_id == c.id).count()
         owner_name = c.owner.full_name if c.owner else "Unassigned"
         lines.append(
@@ -247,10 +248,10 @@ def quick_wins(db: Session = Depends(get_db), _=Depends(require_viewer)):
     candidates = []
     for c in controls:
         total = len(c.safeguards)
-        implemented = sum(1 for s in c.safeguards if s.implementation_status == "implemented")
-        not_impl_ig1 = sum(1 for s in c.safeguards if s.ig == "ig1" and s.implementation_status != "implemented")
-        not_impl_ig2 = sum(1 for s in c.safeguards if s.ig == "ig2" and s.implementation_status != "implemented")
-        not_impl_ig3 = sum(1 for s in c.safeguards if s.ig == "ig3" and s.implementation_status != "implemented")
+        implemented = count_implemented(c.safeguards)
+        not_impl_ig1 = sum(1 for s in c.safeguards if s.ig == "ig1" and s.implementation_status == "not_implemented")
+        not_impl_ig2 = sum(1 for s in c.safeguards if s.ig == "ig2" and s.implementation_status == "not_implemented")
+        not_impl_ig3 = sum(1 for s in c.safeguards if s.ig == "ig3" and s.implementation_status == "not_implemented")
         evidence_count = db.query(Evidence).filter(Evidence.control_id == c.id).count()
 
         # Skip fully implemented controls

@@ -14,6 +14,10 @@ const badgeVariants = cva(
           "border-transparent bg-warning-dim text-warning border-warning-border",
         error:
           "border-transparent bg-danger-dim text-danger border-danger-border",
+        info:
+          "border-transparent bg-info-dim text-info border-info-border",
+        muted:
+          "border-transparent bg-muted/20 text-muted border-border",
         secondary:
           "border-transparent bg-card text-muted border-border",
         outline: "text-foreground border-border",

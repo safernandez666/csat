@@ -21,8 +21,10 @@ class RiskLevel(str, enum.Enum):
 
 class SafeguardStatus(str, enum.Enum):
     NOT_IMPLEMENTED = "not_implemented"
-    IN_PROGRESS = "in_progress"
-    IMPLEMENTED = "implemented"
+    PARTS_IMPLEMENTED = "parts_implemented"
+    IMPLEMENTED_MOST = "implemented_most"
+    IMPLEMENTED_ALL = "implemented_all"
+    NOT_APPLICABLE = "not_applicable"
 
 
 class Control(Base):

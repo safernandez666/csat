@@ -17,6 +17,7 @@ from app.models.settings import Setting
 from app.models.user import User
 from app.services.control_service import compute_compliance_score
 from app.utils.cis_groups import get_cis_group
+from app.utils.safeguard_status import count_implemented
 
 
 # ---------------------------------------------------------------------------
@@ -139,10 +140,10 @@ def _compute_quick_wins(controls: list) -> list:
     candidates = []
     for c in controls:
         total = len(c.safeguards)
-        implemented = sum(1 for s in c.safeguards if s.implementation_status == "implemented")
-        not_impl_ig1 = sum(1 for s in c.safeguards if s.ig == "ig1" and s.implementation_status != "implemented")
-        not_impl_ig2 = sum(1 for s in c.safeguards if s.ig == "ig2" and s.implementation_status != "implemented")
-        not_impl_ig3 = sum(1 for s in c.safeguards if s.ig == "ig3" and s.implementation_status != "implemented")
+        implemented = count_implemented(c.safeguards)
+        not_impl_ig1 = sum(1 for s in c.safeguards if s.ig == "ig1" and s.implementation_status == "not_implemented")
+        not_impl_ig2 = sum(1 for s in c.safeguards if s.ig == "ig2" and s.implementation_status == "not_implemented")
+        not_impl_ig3 = sum(1 for s in c.safeguards if s.ig == "ig3" and s.implementation_status == "not_implemented")
 
         risk_score = {"critical": 1, "high": 2, "medium": 3, "low": 4}.get(c.risk_level, 3)
         owner_score = 0 if c.owner_id else 1
@@ -230,7 +231,9 @@ def generate_pdf_report(db: Session) -> bytes:
         if sg.ig not in ig_progress:
             continue
         ig_progress[sg.ig]["total"] += 1
-        if sg.implementation_status == "implemented":
+        if sg.implementation_status == "not_applicable":
+            continue
+        if sg.implementation_status == "implemented_all":
             ig_progress[sg.ig]["implemented"] += 1
     for k in ig_progress:
         t, i = ig_progress[k]["total"], ig_progress[k]["implemented"]
@@ -599,7 +602,7 @@ def generate_pdf_report(db: Session) -> bytes:
         cell_styles = []
         for ridx, c in enumerate(members, start=1):
             sg_total = len(c.safeguards)
-            sg_impl = sum(1 for s in c.safeguards if s.implementation_status == "implemented")
+            sg_impl = count_implemented(c.safeguards)
             owner = c.owner.full_name if c.owner else "—"
             rows.append([
                 c.cis_id,
@@ -757,7 +760,7 @@ def generate_xlsx_report(db: Session) -> bytes:
 
     for c in sorted(controls, key=lambda x: int(x.cis_id)):
         sg_total = len(c.safeguards)
-        sg_impl = sum(1 for s in c.safeguards if s.implementation_status == "implemented")
+        sg_impl = count_implemented(c.safeguards)
         owner = c.owner.full_name if c.owner else "—"
         ws2.append([
             c.cis_id, c.name, get_cis_group(c.cis_id),

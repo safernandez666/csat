@@ -32,12 +32,12 @@ from app.api.controls import _auto_control_status, _apply_status_transition
 # State mapping
 # ---------------------------------------------------------------------------
 STATUS_MAP = {
-    "Implemented on All Systems": "implemented",
-    "Implemented on Most Systems": "in_progress",
-    "Implemented on Some Systems": "in_progress",
-    "Parts of Policy Implemented": "in_progress",
+    "Implemented on All Systems": "implemented_all",
+    "Implemented on Most Systems": "implemented_most",
+    "Implemented on Some Systems": "implemented_most",
+    "Parts of Policy Implemented": "parts_implemented",
     "Not Implemented": "not_implemented",
-    "Not Applicable": "implemented",
+    "Not Applicable": "not_applicable",
 }
 
 
