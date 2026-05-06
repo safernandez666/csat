@@ -13,6 +13,7 @@ interface AppSettings {
   review_reminder_days: number;
   mfa_required_for_admin: boolean;
   language: Language;
+  industry?: string;
 }
 
 interface AppSettingsContextValue {
@@ -28,6 +29,7 @@ const defaultSettings: AppSettings = {
   review_reminder_days: 7,
   mfa_required_for_admin: false,
   language: getStoredLanguage(),
+  industry: undefined,
 };
 
 const AppSettingsContext = createContext<AppSettingsContextValue>({
@@ -58,6 +60,7 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
         review_reminder_days: s.review_reminder_days || 7,
         mfa_required_for_admin: !!s.mfa_required_for_admin,
         language: lang,
+        industry: s.industry || undefined,
       });
       // Sync remote → local so anonymous routes (login) stay in sync.
       setStoredLanguage(lang);

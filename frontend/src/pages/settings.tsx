@@ -10,6 +10,7 @@ import { CheckCircle2, XCircle, Save, ChevronDown, ChevronUp, Shield, Upload, Tr
 import { toast } from "../hooks/use-toast";
 import { useTranslation } from "../hooks/use-translation";
 import { type Language } from "../lib/i18n";
+import { INDUSTRIES } from "../lib/industry-benchmarks";
 
 interface IntegrationDef {
   name: string;
@@ -123,6 +124,7 @@ export default function SettingsPage() {
     review_reminder_days: 7,
     mfa_required_for_admin: false,
     language: "en",
+    industry: "",
   });
 
   useEffect(() => {
@@ -134,6 +136,7 @@ export default function SettingsPage() {
         review_reminder_days: s.review_reminder_days || 7,
         mfa_required_for_admin: !!s.mfa_required_for_admin,
         language: s.language || "en",
+        industry: s.industry || "",
       });
       // Hydrate SSO panel from oidc_config
       const oc = s.oidc_config || {};
@@ -175,6 +178,7 @@ export default function SettingsPage() {
       await api.updateSetting("review_reminder_days", Number(platform.review_reminder_days));
       await api.updateSetting("mfa_required_for_admin", !!platform.mfa_required_for_admin);
       await api.updateSetting("language", platform.language);
+      await api.updateSetting("industry", platform.industry || null);
       const s = await api.getSettings();
       setSettings(s);
       await refreshSettings();
@@ -409,6 +413,18 @@ export default function SettingsPage() {
                       <option value="en">English</option>
                       <option value="es">Español</option>
                       <option value="pt">Português</option>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-muted mb-1">{t("settings.industry")}</label>
+                    <Select
+                      value={platform.industry}
+                      onChange={(e) => setPlatform({ ...platform, industry: e.target.value })}
+                    >
+                      <option value="">{t("settings.industry_none")}</option>
+                      {INDUSTRIES.map((ind) => (
+                        <option key={ind.key} value={ind.key}>{ind.name}</option>
+                      ))}
                     </Select>
                   </div>
                 </div>

@@ -16,6 +16,8 @@ interface ComplianceSummaryCardProps {
   notImplemented: number;
   needsReview: number;
   spiderData?: { cis_id: string; current: number; target: number }[];
+  benchmarkScore?: number;
+  benchmarkSpiderData?: { cis_id: string; current: number; target: number }[];
 }
 
 const radialConfig = {
@@ -79,6 +81,8 @@ export function ComplianceSummaryCard({
   notImplemented,
   needsReview,
   spiderData,
+  benchmarkScore,
+  benchmarkSpiderData,
 }: ComplianceSummaryCardProps) {
   const { t } = useTranslation();
   const gaugeColor = score >= 80 ? "var(--color-success)" : score >= 60 ? "var(--color-warning)" : "var(--color-danger)";
@@ -132,6 +136,11 @@ export function ComplianceSummaryCard({
               <div className="text-center">
                 <div className="text-sm font-semibold">{t("dashboard.current_assessment")}</div>
                 <p className="text-xs text-muted mt-1 max-w-md">{t("dashboard.current_assessment_desc")}</p>
+                {benchmarkScore !== undefined && (
+                  <p className="text-xs text-muted mt-1">
+                    {t("dashboard.industry_avg")}: <span className="font-medium text-foreground">{benchmarkScore}%</span>
+                  </p>
+                )}
               </div>
             </div>
 
@@ -139,7 +148,7 @@ export function ComplianceSummaryCard({
               <div>
                 <div className="text-center text-sm font-medium mb-2">{t("dashboard.spider_18")}</div>
                 <ChartContainer config={controlChartConfig} className="aspect-square h-64 mx-auto">
-                  <RadarChart data={spiderData}>
+                  <RadarChart data={spiderData.map((d, i) => ({ ...d, benchmark: benchmarkSpiderData?.[i]?.current ?? 0 }))}>
                     <PolarGrid stroke="var(--color-border)" />
                     <PolarAngleAxis dataKey="cis_id" tick={{ fill: "var(--color-muted-foreground)", fontSize: 9 }} />
                     <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: "var(--color-muted)", fontSize: 9 }} />
@@ -154,7 +163,7 @@ export function ComplianceSummaryCard({
                       dot={false}
                     />
                     <Radar
-                      name="Current"
+                      name={t("dashboard.you")}
                       dataKey="current"
                       stroke="var(--color-current)"
                       fill="var(--color-current)"
@@ -162,6 +171,18 @@ export function ComplianceSummaryCard({
                       strokeWidth={2.5}
                       dot={{ r: 3, fill: "var(--color-background)", stroke: "var(--color-current)", strokeWidth: 2 }}
                     />
+                    {benchmarkSpiderData && (
+                      <Radar
+                        name={t("dashboard.industry")}
+                        dataKey="benchmark"
+                        stroke="var(--color-muted-foreground)"
+                        fill="var(--color-muted-foreground)"
+                        fillOpacity={0.05}
+                        strokeWidth={1.5}
+                        strokeDasharray="4 4"
+                        dot={false}
+                      />
+                    )}
                   </RadarChart>
                 </ChartContainer>
                 <div className="mt-1 flex flex-wrap items-center justify-center gap-3 text-xs text-muted">

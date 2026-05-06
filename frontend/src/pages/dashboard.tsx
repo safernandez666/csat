@@ -18,6 +18,8 @@ import { Calendar, Activity, Target, AlertCircle } from "lucide-react";
 import { Spinner } from "../components/ui/spinner";
 import { useTranslation } from "../hooks/use-translation";
 import { localizeControlName } from "../lib/cis-catalog-i18n";
+import { useAppSettings } from "../contexts/app-settings";
+import { BENCHMARKS, getGroupScores, getIGScores, getSpiderData } from "../lib/industry-benchmarks";
 
 const RISK_COLORS: Record<string, string> = {
   critical: "var(--color-danger)",
@@ -51,7 +53,13 @@ const igChartConfig = {
 
 export default function DashboardPage() {
   const { t, lang } = useTranslation();
+  const { settings } = useAppSettings();
   const { data, radar, igProgress, controlScores, loading, error } = useDashboard();
+
+  const benchmark = settings.industry ? BENCHMARKS[settings.industry as keyof typeof BENCHMARKS] : null;
+  const benchmarkGroup = benchmark ? getGroupScores(benchmark) : null;
+  const benchmarkIG = benchmark ? getIGScores(benchmark) : null;
+  const benchmarkSpider = benchmark ? getSpiderData(benchmark) : null;
 
   if (loading) {
     return (
@@ -93,6 +101,8 @@ export default function DashboardPage() {
           notImplemented={s.not_implemented}
           needsReview={s.needs_review}
           spiderData={spiderData}
+          benchmarkScore={benchmark?.total}
+          benchmarkSpiderData={benchmarkSpider || undefined}
         />
 
         {/* 18 Control badges grid */}
@@ -140,12 +150,12 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <ChartContainer config={groupChartConfig} className="aspect-square h-72">
-                <RadarChart data={radarData}>
+                <RadarChart data={radarData.map((d) => ({ ...d, benchmark: benchmarkGroup?.[d.group as keyof typeof benchmarkGroup] ?? 0 }))}>
                   <PolarGrid stroke="var(--color-border)" />
                   <PolarAngleAxis dataKey="group" tick={{ fill: "var(--color-muted-foreground)", fontSize: 12, fontWeight: 500 }} />
                   <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: "var(--color-muted)", fontSize: 10 }} />
                   <Radar
-                    name="Implementation %"
+                    name={t("dashboard.you")}
                     dataKey="score"
                     stroke="var(--color-score)"
                     fill="var(--color-score)"
@@ -153,6 +163,18 @@ export default function DashboardPage() {
                     strokeWidth={2.5}
                     dot={{ r: 4, fill: "var(--color-background)", stroke: "var(--color-score)", strokeWidth: 2 }}
                   />
+                  {benchmark && benchmarkGroup && (
+                    <Radar
+                      name={benchmark.name}
+                      dataKey="benchmark"
+                      stroke="var(--color-muted-foreground)"
+                      fill="var(--color-muted-foreground)"
+                      fillOpacity={0.05}
+                      strokeWidth={1.5}
+                      strokeDasharray="4 4"
+                      dot={false}
+                    />
+                  )}
                   <ShadTooltip content={<ChartTooltipContent />} />
                 </RadarChart>
               </ChartContainer>
@@ -165,6 +187,9 @@ export default function DashboardPage() {
                     />
                     <span>{t(`group.${g.group.toLowerCase()}`)}</span>
                     <span className="font-semibold text-foreground">{g.score}%</span>
+                    {benchmarkGroup && (
+                      <span className="text-muted">/ {benchmarkGroup[g.group as keyof typeof benchmarkGroup]}%</span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -183,16 +208,16 @@ export default function DashboardPage() {
                 <ChartContainer config={igChartConfig} className="aspect-square h-72">
                   <RadarChart
                     data={[
-                      { group: "IG1", score: igProgress.ig1?.score ?? 0 },
-                      { group: "IG2", score: igProgress.ig2?.score ?? 0 },
-                      { group: "IG3", score: igProgress.ig3?.score ?? 0 },
+                      { group: "IG1", score: igProgress.ig1?.score ?? 0, benchmark: benchmarkIG?.IG1 ?? 0 },
+                      { group: "IG2", score: igProgress.ig2?.score ?? 0, benchmark: benchmarkIG?.IG2 ?? 0 },
+                      { group: "IG3", score: igProgress.ig3?.score ?? 0, benchmark: benchmarkIG?.IG3 ?? 0 },
                     ]}
                   >
                     <PolarGrid stroke="var(--color-border)" />
                     <PolarAngleAxis dataKey="group" tick={{ fill: "var(--color-muted-foreground)", fontSize: 12, fontWeight: 500 }} />
                     <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: "var(--color-muted)", fontSize: 10 }} />
                     <Radar
-                      name="Implementation %"
+                      name={t("dashboard.you")}
                       dataKey="score"
                       stroke="var(--color-score)"
                       fill="var(--color-score)"
@@ -200,6 +225,18 @@ export default function DashboardPage() {
                       strokeWidth={2.5}
                       dot={{ r: 4, fill: "var(--color-background)", stroke: "var(--color-score)", strokeWidth: 2 }}
                     />
+                    {benchmark && benchmarkIG && (
+                      <Radar
+                        name={benchmark.name}
+                        dataKey="benchmark"
+                        stroke="var(--color-muted-foreground)"
+                        fill="var(--color-muted-foreground)"
+                        fillOpacity={0.05}
+                        strokeWidth={1.5}
+                        strokeDasharray="4 4"
+                        dot={false}
+                      />
+                    )}
                     <ShadTooltip content={<ChartTooltipContent />} />
                   </RadarChart>
                 </ChartContainer>
@@ -215,6 +252,9 @@ export default function DashboardPage() {
                         />
                         <span>{ig}</span>
                         <span className="font-semibold text-foreground">{p.score}%</span>
+                        {benchmarkIG && (
+                          <span className="text-muted">/ {benchmarkIG[ig as keyof typeof benchmarkIG]}%</span>
+                        )}
                       </div>
                     );
                   })}
