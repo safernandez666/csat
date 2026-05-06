@@ -46,7 +46,7 @@ export function StatusBarChart({
         <CardTitle className="text-base">{t("dashboard.status_breakdown")}</CardTitle>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="aspect-video h-64">
+        <ChartContainer config={chartConfig} className="w-full h-56">
           <BarChart data={chartData} margin={{ left: 12, right: 12, top: 12, bottom: 12 }}>
             <CartesianGrid vertical={false} stroke="var(--color-border)" />
             <XAxis
