@@ -8,8 +8,8 @@
 
 Open-source, self-hosted platform for managing **CIS Controls v8** end-to-end:
 implementation status per control and per safeguard, evidence, audit logs,
-PDF/Excel reports with an AI-generated executive summary, and a chat
-assistant grounded in your real posture data.
+PDF/Excel reports with an AI-generated executive summary, industry benchmarks,
+and a chat assistant that searches your real posture data before answering.
 
 Built for security teams that want a single source of truth for compliance
 without sending data to a third-party SaaS.
@@ -94,6 +94,8 @@ The first start will:
 - create default users and roles,
 - start the daily review-reminder scheduler.
 
+> **Want demo data?** See [Importing data](#importing-data) below.
+
 ---
 
 ## First-time setup (post-login)
@@ -103,11 +105,13 @@ Once you are logged in as admin:
 1. **Settings → Branding** — set the company / platform name and upload a logo.
    Both surface on the dashboard header, the login screen, the browser tab and
    on every PDF/Excel report cover.
-2. **Settings → AI** — configure the LLM provider. Ollama is the default and
+2. **Settings → Industry Benchmark** — pick your sector to overlay representative
+   maturity baselines on every radar chart (optional).
+3. **Settings → AI** — configure the LLM provider. Ollama is the default and
    works fully offline. See [Configure the AI assistant](#configure-the-ai-assistant).
-3. **Users** — create real accounts and rotate the default `admin@csat.local`
+4. **Users** — create real accounts and rotate the default `admin@csat.local`
    password. Demo credentials are seeded *every restart*; treat them as ephemeral.
-4. **Controls → assign owners** — every control without an owner gets flagged
+5. **Controls → assign owners** — every control without an owner gets flagged
    in Quick Wins and the executive summary.
 
 You're now ready to start tracking implementation per safeguard.
@@ -118,31 +122,39 @@ You're now ready to start tracking implementation per safeguard.
 
 | Page | What you do there |
 |------|-------------------|
-| **Dashboard** | Compliance score (avg per-control completion), risk distribution, IG maturity, recent activity. |
+| **Dashboard** | Compliance score, risk distribution, control/IG maturity radars with optional industry benchmark overlay, spider web of all 18 controls, recent activity. |
 | **Controls** | List of all 18 CIS Controls. Filter by status / risk / owner. |
-| **Control detail** | Edit status, owner, due date, review date. Toggle each safeguard's status. Upload evidence files or external links. Add comments / activity history. |
+| **Control detail** | Edit status, owner, due date, review date. Toggle each safeguard across 5 granular statuses. Upload evidence files or external links. Add comments / activity history. |
 | **Implementation Waves** | Pick IG1, IG2 or IG3 and tackle that wave's safeguards in one place — grouped by parent control, with inline status editing. Use this when you want to bring a wave from 0% to 100%. |
 | **Quick Wins** | Heuristic-ranked + LLM-analyzed top 5 controls to address next, weighted by IG1 pending, risk, and missing owners/evidence. |
-| **AI Assistant** | Ask questions about your posture in natural language. Has memory across sessions and is grounded in your real control data. |
+| **AI Assistant** | Ask questions about your posture. The assistant searches controls, safeguards, evidence and users before answering — so responses are grounded in your real data. |
 | **Audit Logs** | Immutable log of every login, control update, evidence upload, etc. |
 | **Export Report** | Generates a 5-page PDF (cover with donut score, exec summary by AI, compliance overview, IG cards, top quick wins, control inventory by group) and a 3-sheet Excel workbook. |
 
 ### Status semantics
 
-A safeguard is `not_implemented` / `in_progress` / `implemented`.
+A safeguard can be in one of **five** granular statuses:
+
+| Status | Score weight | Meaning |
+|--------|-------------|---------|
+| `implemented_all` | 100% | Fully implemented on all systems |
+| `implemented_most` | 75% | Implemented on most / some systems |
+| `parts_implemented` | 50% | Parts of the policy implemented |
+| `not_implemented` | 0% | Not implemented |
+| `not_applicable` | excluded | Excluded from scoring |
 
 A control's status is **derived** from its safeguards:
 
-- All safeguards `implemented` → control is `implemented`
-- At least one in `implemented` or `in_progress` → control is `in_progress`
+- All applicable safeguards `implemented_all` → control is `implemented`
+- At least one applicable safeguard in progress → control is `in_progress`
 - Otherwise → `not_implemented`
 
 You can also manually flag a control as `needs_review` from the Edit panel.
 Transition timestamps (`started_at`, `implemented_at`) are recorded automatically.
 
-The **compliance score** is the average of each control's safeguard completion
-percentage — every control weighs equally regardless of how many safeguards
-it has.
+The **compliance score** is the weighted average of each control's safeguard
+completion — `implemented_all` = 1.0, `implemented_most` = 0.75,
+`parts_implemented` = 0.5, `not_applicable` is excluded from the denominator.
 
 ---
 
@@ -365,6 +377,44 @@ and the seeded credentials work out of the box.
 | **Security Analyst** | ✓ | ✓ | — | ✓ |
 | **Auditor** | ✓ | comments only | — | ✓ |
 | **Viewer** | ✓ | — | — | — |
+
+---
+
+## Importing data
+
+### From Excel (CIS assessment)
+
+CSAT ships with a script that reads CIS-style assessment Excel files and maps
+their `Control Implemented` column into the 5 granular safeguard statuses.
+
+```bash
+# Copy the Excel into the running backend container
+docker cp assessment.xlsx csat-backend:/app/scripts/datos.xlsx
+
+# Run the import
+docker exec csat-backend python /app/scripts/import_assessment.py /app/scripts/datos.xlsx
+```
+
+The script creates users from the `Assigned To` column, assigns control owners,
+and updates every matched safeguard. Unmatched safeguards are reported as
+warnings (e.g. `4.10`, `4.11`, `4.12` do not exist in the current CIS v8 seed).
+
+### From SQL (demo / pre-populated dataset)
+
+A pre-populated SQL dump lives in `backend/scripts/seed_data.sql`. It contains
+18 controls, 152 safeguards, evidence, users and settings — ready for demos or
+for restoring a known baseline.
+
+```bash
+# Wipe the current database and re-seed from SQL
+docker compose stop backend
+docker exec csat-backend rm /app/data/csat.db
+docker compose start backend
+sleep 5  # wait for schema creation
+
+# Import the demo data
+docker exec -i csat-backend sh -c 'sqlite3 /app/data/csat.db' < backend/scripts/seed_data.sql
+```
 
 ---
 
