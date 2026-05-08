@@ -69,3 +69,4 @@ htmlcov/
 # Misc local artifacts
 /tmp/
 *.pid
+.deepsec/

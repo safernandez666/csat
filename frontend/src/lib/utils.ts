@@ -48,3 +48,14 @@ export function statusColor(status: string): string {
       return "text-muted bg-card border-border";
   }
 }
+
+/** Return true if the URL uses a safe protocol for user-supplied links. */
+export function isSafeExternalUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  try {
+    const u = new URL(url);
+    return u.protocol === "http:" || u.protocol === "https:" || u.protocol === "mailto:";
+  } catch {
+    return false;
+  }
+}

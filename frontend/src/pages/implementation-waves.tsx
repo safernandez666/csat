@@ -51,7 +51,7 @@ export default function ImplementationWavesPage() {
         const ig = (sg.ig || "ig1") as IG;
         if (!stats[ig]) continue;
         stats[ig].total += 1;
-        if (sg.implementation_status === "implemented") stats[ig].implemented += 1;
+        if (sg.implementation_status === "implemented_all") stats[ig].implemented += 1;
       }
     }
     return stats;
@@ -64,7 +64,7 @@ export default function ImplementationWavesPage() {
     for (const c of controls) {
       const sgs = c.safeguards.filter((s) => {
         if ((s.ig || "ig1") !== activeIG) return false;
-        if (hideImplemented && s.implementation_status === "implemented") return false;
+        if (hideImplemented && s.implementation_status === "implemented_all") return false;
         return true;
       });
       if (sgs.length > 0) out.push({ control: c, safeguards: sgs });
@@ -193,7 +193,7 @@ export default function ImplementationWavesPage() {
         {groups.map(({ control, safeguards }) => {
           const igTotal = control.safeguards.filter((s) => (s.ig || "ig1") === activeIG).length;
           const igImpl = control.safeguards.filter(
-            (s) => (s.ig || "ig1") === activeIG && s.implementation_status === "implemented"
+            (s) => (s.ig || "ig1") === activeIG && s.implementation_status === "implemented_all"
           ).length;
           const ctrlPct = igTotal > 0 ? Math.round((igImpl / igTotal) * 100) : 0;
 

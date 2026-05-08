@@ -1,7 +1,7 @@
 import { useEvidence } from "../hooks/use-api";
 import { Layout } from "../components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { formatDate } from "../lib/utils";
+import { formatDate, isSafeExternalUrl } from "../lib/utils";
 import { FileText, ExternalLink } from "lucide-react";
 import { useTranslation } from "../hooks/use-translation";
 
@@ -25,7 +25,7 @@ export default function EvidencePage() {
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-accent" />
                     <span className="text-sm font-medium">{ev.file_name || t("control_detail.comments")}</span>
-                    {ev.external_link && (
+                    {ev.external_link && isSafeExternalUrl(ev.external_link) && (
                       <a href={ev.external_link} target="_blank" rel="noreferrer" className="text-accent hover:underline">
                         <ExternalLink className="h-3 w-3" />
                       </a>

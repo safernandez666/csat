@@ -10,6 +10,7 @@ import { CheckCircle2, XCircle, Save, ChevronDown, ChevronUp, Shield, Upload, Tr
 import { toast } from "../hooks/use-toast";
 import { useTranslation } from "../hooks/use-translation";
 import { type Language } from "../lib/i18n";
+import { INDUSTRIES } from "../lib/industry-benchmarks";
 
 interface IntegrationDef {
   name: string;
@@ -32,24 +33,9 @@ const INTEGRATIONS: IntegrationDef[] = [
       { name: "port", label: "Port", type: "number" },
     ],
   },
-  {
-    name: "Okta OIDC",
-    key: "okta_oidc",
-    fields: [
-      { name: "client_id", label: "Client ID" },
-      { name: "client_secret", label: "Client Secret", type: "password" },
-      { name: "issuer_url", label: "Issuer URL" },
-    ],
-  },
-  {
-    name: "Keycloak OIDC",
-    key: "keycloak_oidc",
-    fields: [
-      { name: "client_id", label: "Client ID" },
-      { name: "client_secret", label: "Client Secret", type: "password" },
-      { name: "issuer_url", label: "Issuer URL" },
-    ],
-  },
+  // Note: SSO (OIDC) is configured in its own panel above. Keycloak / Okta /
+  // Entra ID all funnel through the same `oidc_config` setting and the
+  // /api/auth/oidc/* endpoints.
   {
     name: "Wazuh",
     key: "wazuh",
@@ -114,12 +100,31 @@ export default function SettingsPage() {
   const [aiHealth, setAiHealth] = useState<Record<string, any> | null>(null);
   const [testingAi, setTestingAi] = useState(false);
 
+  // SSO (OIDC). One row in `settings` keyed `oidc_config`. The login screen
+  // shows the SSO button only when this is enabled + complete.
+  const DEFAULT_SSO = {
+    enabled: false,
+    issuer_url: "",
+    client_id: "",
+    client_secret: "",
+    group_admin: "csat-admins",
+    group_analyst: "csat-analysts",
+    group_auditor: "csat-auditors",
+    group_viewer: "csat-viewers",
+    default_role: "Viewer" as "" | "Admin" | "Security Analyst" | "Auditor" | "Viewer",
+  };
+  const [sso, setSso] = useState(DEFAULT_SSO);
+  const [savingSso, setSavingSso] = useState(false);
+  const [testingSso, setTestingSso] = useState(false);
+  const [ssoTestResult, setSsoTestResult] = useState<{ status: "ok" | "error"; detail: string } | null>(null);
+
   const [platform, setPlatform] = useState({
     platform_name: "",
     theme_default: "dark",
     review_reminder_days: 7,
     mfa_required_for_admin: false,
     language: "en",
+    industry: "",
   });
 
   useEffect(() => {
@@ -131,6 +136,24 @@ export default function SettingsPage() {
         review_reminder_days: s.review_reminder_days || 7,
         mfa_required_for_admin: !!s.mfa_required_for_admin,
         language: s.language || "en",
+        industry: s.industry || "",
+      });
+      // Hydrate SSO panel from oidc_config
+      const oc = s.oidc_config || {};
+      const grm = oc.group_role_map || {};
+      // Reverse the map: { "csat-admins": "Admin" } → group_admin: "csat-admins"
+      const findGroupForRole = (role: string): string =>
+        Object.entries(grm).find(([, r]) => r === role)?.[0] || "";
+      setSso({
+        enabled: !!oc.enabled,
+        issuer_url: oc.issuer_url || "",
+        client_id: oc.client_id || "",
+        client_secret: oc.client_secret || "",
+        group_admin: findGroupForRole("Admin") || "csat-admins",
+        group_analyst: findGroupForRole("Security Analyst") || "csat-analysts",
+        group_auditor: findGroupForRole("Auditor") || "csat-auditors",
+        group_viewer: findGroupForRole("Viewer") || "csat-viewers",
+        default_role: (oc.default_role as any) || "Viewer",
       });
       setLoading(false);
     }).catch(() => setLoading(false));
@@ -155,6 +178,7 @@ export default function SettingsPage() {
       await api.updateSetting("review_reminder_days", Number(platform.review_reminder_days));
       await api.updateSetting("mfa_required_for_admin", !!platform.mfa_required_for_admin);
       await api.updateSetting("language", platform.language);
+      await api.updateSetting("industry", platform.industry || null);
       const s = await api.getSettings();
       setSettings(s);
       await refreshSettings();
@@ -201,6 +225,50 @@ export default function SettingsPage() {
       toast("AI configuration saved", "success");
     } catch (e: any) {
       toast(e.message || "Failed to save AI config", "error");
+    }
+  };
+
+  const testSso = async () => {
+    setTestingSso(true);
+    setSsoTestResult(null);
+    try {
+      const res = await api.testOidc({
+        issuer_url: sso.issuer_url.trim(),
+        client_id: sso.client_id.trim() || undefined,
+        client_secret: sso.client_secret || undefined,
+      });
+      setSsoTestResult({ status: res.status, detail: res.detail });
+    } catch (e: any) {
+      setSsoTestResult({ status: "error", detail: e.message || t("settings.sso.test_failed") });
+    } finally {
+      setTestingSso(false);
+    }
+  };
+
+  const saveSso = async () => {
+    setSavingSso(true);
+    try {
+      // Compose group_role_map from the four named inputs, dropping empties
+      // so that an unset group doesn't create a "" → Role mapping.
+      const map: Record<string, string> = {};
+      if (sso.group_admin)   map[sso.group_admin]   = "Admin";
+      if (sso.group_analyst) map[sso.group_analyst] = "Security Analyst";
+      if (sso.group_auditor) map[sso.group_auditor] = "Auditor";
+      if (sso.group_viewer)  map[sso.group_viewer]  = "Viewer";
+
+      await api.updateSetting("oidc_config", {
+        enabled: sso.enabled,
+        issuer_url: sso.issuer_url.trim(),
+        client_id: sso.client_id.trim(),
+        client_secret: sso.client_secret,
+        group_role_map: map,
+        default_role: sso.default_role || null,
+      });
+      toast(t("settings.sso.saved"), "success");
+    } catch (e: any) {
+      toast(e.message || t("settings.sso.save_failed"), "error");
+    } finally {
+      setSavingSso(false);
     }
   };
 
@@ -347,6 +415,18 @@ export default function SettingsPage() {
                       <option value="pt">Português</option>
                     </Select>
                   </div>
+                  <div>
+                    <label className="block text-xs font-medium text-muted mb-1">{t("settings.industry")}</label>
+                    <Select
+                      value={platform.industry}
+                      onChange={(e) => setPlatform({ ...platform, industry: e.target.value })}
+                    >
+                      <option value="">{t("settings.industry_none")}</option>
+                      {INDUSTRIES.map((ind) => (
+                        <option key={ind.key} value={ind.key}>{ind.name}</option>
+                      ))}
+                    </Select>
+                  </div>
                 </div>
               </div>
             )}
@@ -471,6 +551,164 @@ export default function SettingsPage() {
                   {t("common.save")}
                 </Button>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Single Sign-On (OIDC) */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Shield className="h-4 w-4 text-muted" />
+              {t("settings.sso.title")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-xs text-muted">
+              {t("settings.sso.help")}
+            </p>
+
+            <div className="flex items-center gap-2">
+              <input
+                id="sso-enabled"
+                type="checkbox"
+                checked={sso.enabled}
+                onChange={(e) => setSso({ ...sso, enabled: e.target.checked })}
+                className="rounded border-border"
+              />
+              <label htmlFor="sso-enabled" className="text-sm cursor-pointer select-none">
+                {t("settings.sso.enable")}
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1">
+                  {t("settings.sso.issuer_url")}
+                </label>
+                <Input
+                  value={sso.issuer_url}
+                  onChange={(e) => setSso({ ...sso, issuer_url: e.target.value })}
+                  placeholder="http://host.docker.internal:8081/realms/csat"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1">
+                  {t("settings.sso.client_id")}
+                </label>
+                <Input
+                  value={sso.client_id}
+                  onChange={(e) => setSso({ ...sso, client_id: e.target.value })}
+                  placeholder="csat-app"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-medium text-muted mb-1">
+                  {t("settings.sso.client_secret")}
+                </label>
+                <Input
+                  type="password"
+                  value={sso.client_secret}
+                  onChange={(e) => setSso({ ...sso, client_secret: e.target.value })}
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border bg-card/50 p-4 space-y-3">
+              <div className="text-xs font-semibold text-muted uppercase tracking-wider">
+                {t("settings.sso.group_mapping")}
+              </div>
+              <p className="text-xs text-muted">
+                {t("settings.sso.group_mapping_help")}
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-muted mb-1">Admin</label>
+                  <Input
+                    value={sso.group_admin}
+                    onChange={(e) => setSso({ ...sso, group_admin: e.target.value })}
+                    placeholder="csat-admins"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-muted mb-1">Security Analyst</label>
+                  <Input
+                    value={sso.group_analyst}
+                    onChange={(e) => setSso({ ...sso, group_analyst: e.target.value })}
+                    placeholder="csat-analysts"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-muted mb-1">Auditor</label>
+                  <Input
+                    value={sso.group_auditor}
+                    onChange={(e) => setSso({ ...sso, group_auditor: e.target.value })}
+                    placeholder="csat-auditors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-muted mb-1">Viewer</label>
+                  <Input
+                    value={sso.group_viewer}
+                    onChange={(e) => setSso({ ...sso, group_viewer: e.target.value })}
+                    placeholder="csat-viewers"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1">
+                  {t("settings.sso.default_role")}
+                </label>
+                <Select
+                  value={sso.default_role}
+                  onChange={(e) => setSso({ ...sso, default_role: e.target.value as any })}
+                >
+                  <option value="">— {t("settings.sso.default_none")} —</option>
+                  <option value="Admin">Admin</option>
+                  <option value="Security Analyst">Security Analyst</option>
+                  <option value="Auditor">Auditor</option>
+                  <option value="Viewer">Viewer</option>
+                </Select>
+                <p className="text-xs text-muted mt-1">
+                  {t("settings.sso.default_role_help")}
+                </p>
+              </div>
+            </div>
+
+            {ssoTestResult && (
+              <div
+                className={`flex items-start gap-2 rounded-lg border p-3 text-xs ${
+                  ssoTestResult.status === "ok"
+                    ? "border-success/30 bg-success/5 text-success"
+                    : "border-danger/30 bg-danger/5 text-danger"
+                }`}
+              >
+                {ssoTestResult.status === "ok" ? (
+                  <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
+                ) : (
+                  <XCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                )}
+                <span>{ssoTestResult.detail}</span>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={testSso}
+                disabled={testingSso || !sso.issuer_url.trim()}
+              >
+                <Activity className="h-3 w-3 mr-1" />
+                {testingSso ? t("settings.sso.testing") : t("settings.sso.test")}
+              </Button>
+              <Button onClick={saveSso} disabled={savingSso}>
+                <Save className="h-3 w-3 mr-1" />
+                {savingSso ? t("common.saving") : t("common.save")}
+              </Button>
             </div>
           </CardContent>
         </Card>

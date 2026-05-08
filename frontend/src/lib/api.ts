@@ -188,6 +188,12 @@ export const api = {
       extracted_chars: number;
     }>(`/api/ai/evaluate-evidence/${evidenceId}`, { method: "POST" }),
 
+  testOidc: (config: { issuer_url: string; client_id?: string; client_secret?: string }) =>
+    fetchJson<{ status: "ok" | "error"; detail: string; issuer?: string; authorization_endpoint?: string; token_endpoint?: string }>(
+      "/api/auth/oidc/test",
+      { method: "POST", body: JSON.stringify(config) }
+    ),
+
   uploadLogo: (file: File) => {
     const formData = new FormData();
     formData.append("file", file);

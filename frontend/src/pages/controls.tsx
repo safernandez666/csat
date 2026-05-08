@@ -27,7 +27,7 @@ function IgProgressMini({ control }: { control: Control }) {
     const k = (sg.ig || "ig1") as keyof typeof counts;
     if (counts[k]) {
       counts[k].total += 1;
-      if (sg.implementation_status === "implemented") counts[k].impl += 1;
+      if (sg.implementation_status === "implemented_all") counts[k].impl += 1;
     }
   });
   const bars = [

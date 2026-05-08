@@ -10,6 +10,7 @@ from app.models.control import Control, Safeguard
 from app.models.user import User
 from app.services.audit_service import log_action
 from app.utils.cis_groups import get_cis_group
+from app.utils.safeguard_status import auto_control_status as _auto_control_status
 
 router = APIRouter(prefix="/api/controls", tags=["controls"])
 
@@ -62,17 +63,7 @@ class SafeguardUpdate(BaseModel):
     implementation_status: str
 
 
-def _auto_control_status(control: Control) -> str:
-    """Derive control status from its safeguards."""
-    if not control.safeguards:
-        return control.status or "not_implemented"
-    all_impl = all(s.implementation_status == "implemented" for s in control.safeguards)
-    any_progress = any(s.implementation_status in ("implemented", "in_progress") for s in control.safeguards)
-    if all_impl:
-        return "implemented"
-    if any_progress:
-        return "in_progress"
-    return "not_implemented"
+# _auto_control_status is imported from app.utils.safeguard_status
 
 
 def _apply_status_transition(control: Control, new_status: str) -> bool:

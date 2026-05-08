@@ -7,6 +7,7 @@ from app.models.control import Control, Safeguard
 from app.models.review_schedule import ReviewSchedule
 from app.utils.cis_groups import get_cis_group
 from app.utils.cis_ig_map import SAFEGUARD_IG
+from app.utils.safeguard_status import compute_control_score, count_implemented, count_not_applicable
 from datetime import datetime, timezone, timedelta
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -51,7 +52,7 @@ def dashboard_radar(db: Session = Depends(get_db), _=Depends(require_viewer)):
     for c in controls:
         g = get_cis_group(c.cis_id)
         if g in groups:
-            groups[g].append(c.status == "implemented")
+            groups[g].append(compute_control_score(c))
     radar = []
     for g, vals in groups.items():
         score = round((sum(vals) / len(vals)) * 100) if vals else 0
@@ -67,8 +68,10 @@ def dashboard_ig_progress(db: Session = Depends(get_db), _=Depends(require_viewe
         key = sg.ig
         if key not in result:
             continue
+        if sg.implementation_status == "not_applicable":
+            continue
         result[key]["total"] += 1
-        if sg.implementation_status == "implemented":
+        if sg.implementation_status == "implemented_all":
             result[key]["implemented"] += 1
     for key in result:
         t = result[key]["total"]
@@ -82,9 +85,8 @@ def dashboard_control_scores(db: Session = Depends(get_db), _=Depends(require_vi
     controls = sorted(db.query(Control).all(), key=lambda c: int(c.cis_id))
     scores = []
     for c in controls:
-        total = len(c.safeguards)
-        implemented = sum(1 for s in c.safeguards if s.implementation_status == "implemented")
-        score = round((implemented / total) * 100) if total else 0
+        total = len([s for s in c.safeguards if s.implementation_status != "not_applicable"])
+        score = round(compute_control_score(c) * 100)
         scores.append({
             "id": c.id,
             "cis_id": c.cis_id,
@@ -93,6 +95,6 @@ def dashboard_control_scores(db: Session = Depends(get_db), _=Depends(require_vi
             "group": get_cis_group(c.cis_id),
             "score": score,
             "total": total,
-            "implemented": implemented,
+            "implemented": count_implemented(c.safeguards),
         })
     return {"scores": scores}

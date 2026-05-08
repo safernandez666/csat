@@ -21,17 +21,21 @@ the rest of the app needs no changes downstream of /api/auth/me.
 """
 import base64
 import hashlib
+import ipaddress
 import secrets
+import time
 from typing import Any
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 import httpx
 from authlib.jose import jwt as authlib_jwt
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.api.deps import get_db, require_admin
 from app.core.config import settings
 from app.core.security import create_access_token, create_refresh_token
 from app.models.settings import Setting
@@ -41,7 +45,8 @@ from app.services.audit_service import log_action
 router = APIRouter(prefix="/api/auth/oidc", tags=["auth"])
 
 # Cache the discovery document per issuer to avoid hitting it on every login.
-_DISCOVERY_CACHE: dict[str, dict] = {}
+_DISCOVERY_CACHE: dict[str, tuple[float, dict]] = {}
+_DISCOVERY_TTL_SECONDS = 3600
 
 
 def get_oidc_config(db: Session) -> dict | None:
@@ -60,8 +65,10 @@ def get_oidc_config(db: Session) -> dict | None:
 
 def _get_discovery(issuer_url: str) -> dict:
     issuer = issuer_url.rstrip("/")
-    if issuer in _DISCOVERY_CACHE:
-        return _DISCOVERY_CACHE[issuer]
+    now = time.time()
+    cached = _DISCOVERY_CACHE.get(issuer)
+    if cached and (now - cached[0]) < _DISCOVERY_TTL_SECONDS:
+        return cached[1]
     url = f"{issuer}/.well-known/openid-configuration"
     with httpx.Client(timeout=10) as client:
         resp = client.get(url)
@@ -71,7 +78,7 @@ def _get_discovery(issuer_url: str) -> dict:
             detail=f"OIDC discovery failed at {url}: HTTP {resp.status_code}",
         )
     doc = resp.json()
-    _DISCOVERY_CACHE[issuer] = doc
+    _DISCOVERY_CACHE[issuer] = (now, doc)
     return doc
 
 
@@ -86,9 +93,13 @@ def _make_pkce() -> tuple[str, str]:
 
 
 def _redirect_uri(request: Request) -> str:
-    """Build the absolute callback URL, honoring nginx proxy headers."""
+    """Build the absolute callback URL from the request.
+
+    We trust the standard Host header (set by the reverse proxy) but we do
+    NOT trust X-Forwarded-Host because it is client-controllable.
+    """
     scheme = request.headers.get("x-forwarded-proto") or request.url.scheme
-    host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    host = request.headers.get("host") or request.url.hostname
     return f"{scheme}://{host}/api/auth/oidc/callback"
 
 
@@ -184,9 +195,10 @@ def oidc_callback(request: Request, db: Session = Depends(get_db)):
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
     if token_resp.status_code != 200:
+        # Don't echo the IdP error body back to the browser — it may leak secrets.
         raise HTTPException(
             status_code=502,
-            detail=f"Token exchange failed: HTTP {token_resp.status_code} {token_resp.text[:200]}",
+            detail="Token exchange failed. Check server logs for more information.",
         )
     tokens = token_resp.json()
     id_token = tokens.get("id_token")
@@ -206,8 +218,24 @@ def oidc_callback(request: Request, db: Session = Depends(get_db)):
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=f"Invalid ID token: {e}")
 
+    # 3) Validate issuer and audience
+    expected_issuer = cfg["issuer_url"].rstrip("/")
+    token_issuer = claims.get("iss", "").rstrip("/")
+    if token_issuer != expected_issuer:
+        raise HTTPException(
+            status_code=400,
+            detail="ID token issuer mismatch.",
+        )
+    token_aud = claims.get("aud")
+    if isinstance(token_aud, list):
+        if cfg["client_id"] not in token_aud:
+            raise HTTPException(status_code=400, detail="ID token audience mismatch.")
+    elif token_aud != cfg["client_id"]:
+        raise HTTPException(status_code=400, detail="ID token audience mismatch.")
+
     sub = claims.get("sub")
     email = claims.get("email")
+    email_verified = claims.get("email_verified")
     name = claims.get("name") or claims.get("preferred_username") or email
     groups_raw = _resolve_groups(claims, access_token, discovery)
     if not email:
@@ -220,12 +248,19 @@ def oidc_callback(request: Request, db: Session = Depends(get_db)):
             if ui.status_code == 200:
                 info = ui.json()
                 email = info.get("email")
+                email_verified = info.get("email_verified")
                 name = name or info.get("name") or info.get("preferred_username")
 
     if not sub or not email:
         raise HTTPException(status_code=400, detail="ID token missing sub/email")
 
-    # 3) Map IdP groups → CSAT roles
+    if not email_verified:
+        raise HTTPException(
+            status_code=403,
+            detail="OIDC login requires a verified email address.",
+        )
+
+    # 4) Map IdP groups → CSAT roles
     group_role_map: dict[str, str] = cfg.get("group_role_map") or {}
     default_role: str | None = cfg.get("default_role") or None
     role_names: set[str] = set()
@@ -242,7 +277,7 @@ def oidc_callback(request: Request, db: Session = Depends(get_db)):
             detail="Your IdP groups don't map to any CSAT role. Ask your admin to update the group mapping.",
         )
 
-    # 4) JIT provisioning — match by external_id first, fall back to email
+    # 5) JIT provisioning — match by external_id first, fall back to verified email
     user = db.query(User).filter(User.external_id == sub).first()
     if not user:
         user = db.query(User).filter(User.email == email).first()
@@ -250,7 +285,20 @@ def oidc_callback(request: Request, db: Session = Depends(get_db)):
         user = User(email=email, full_name=name or email, external_id=sub,
                     hashed_password=None, is_active=True)
         db.add(user)
-        db.flush()
+        try:
+            db.flush()
+        except IntegrityError:
+            db.rollback()
+            # Race: another request created the user between query and flush.
+            # Try to fetch again by external_id (most likely winner).
+            user = db.query(User).filter(User.external_id == sub).first()
+            if not user:
+                user = db.query(User).filter(User.email == email).first()
+            if not user:
+                raise HTTPException(
+                    status_code=500,
+                    detail="User provisioning failed due to a race condition. Please retry.",
+                )
     else:
         if not user.external_id:
             user.external_id = sub
@@ -262,7 +310,7 @@ def oidc_callback(request: Request, db: Session = Depends(get_db)):
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account inactive")
 
-    # 5) Sync roles to whatever the IdP currently says
+    # 6) Sync roles to whatever the IdP currently says
     roles = db.query(Role).filter(Role.name.in_(role_names)).all()
     user.roles = roles
     db.commit()
@@ -275,9 +323,119 @@ def oidc_callback(request: Request, db: Session = Depends(get_db)):
         details={"groups": list(groups_raw), "roles": [r.name for r in roles]},
     )
 
-    # 6) Emit the same JWT cookies the local login path uses, then redirect home
+    # 7) Emit the same JWT cookies the local login path uses, then redirect home
     resp = RedirectResponse("/", status_code=302)
     _set_session_cookies(resp, user.id, user.email)
     resp.delete_cookie("oidc_state")
     resp.delete_cookie("oidc_verifier")
     return resp
+
+
+# ---------------------------------------------------------------------------
+# Admin-only: validate a tentative OIDC config without saving it
+# ---------------------------------------------------------------------------
+
+class OIDCTestRequest(BaseModel):
+    issuer_url: str
+    client_id: str | None = None
+    client_secret: str | None = None
+
+
+def _is_private_url(url: str) -> bool:
+    """Return True if the URL points to a private / loopback IP address."""
+    parsed = urlparse(url)
+    hostname = parsed.hostname
+    if not hostname:
+        return True
+    try:
+        addr = ipaddress.ip_address(hostname)
+        return addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved
+    except ValueError:
+        # hostname is a domain name, not an IP — that's acceptable
+        return False
+
+
+@router.post("/test")
+def oidc_test(req: OIDCTestRequest, _admin: User = Depends(require_admin)) -> dict:
+    """Probe the IdP without persisting anything.
+
+    Hits the discovery endpoint, parses it, and confirms the URLs we care
+    about (authorization, token, jwks, userinfo) are present. We deliberately
+    avoid actually exchanging anything — that requires a real user — so this
+    is a "is the config plausibly correct" check, not a full login simulation.
+    """
+    issuer = req.issuer_url.strip().rstrip("/")
+    if not issuer:
+        return {"status": "error", "detail": "Issuer URL is required."}
+
+    parsed = urlparse(issuer)
+    if parsed.scheme not in ("http", "https"):
+        return {"status": "error", "detail": "Issuer URL must use http or https."}
+
+    if _is_private_url(issuer):
+        return {"status": "error", "detail": "Issuer URL must not point to a private or loopback address."}
+
+    discovery_url = f"{issuer}/.well-known/openid-configuration"
+    try:
+        with httpx.Client(timeout=10) as client:
+            resp = client.get(discovery_url)
+    except httpx.ConnectError as e:
+        return {
+            "status": "error",
+            "detail": f"Cannot connect to {issuer}. Check the URL and that the IdP is reachable from CSAT. ({e})",
+        }
+    except httpx.TimeoutException:
+        return {
+            "status": "error",
+            "detail": f"Timeout reaching {discovery_url}. The IdP is slow or unreachable.",
+        }
+    except Exception as e:  # noqa: BLE001
+        return {"status": "error", "detail": f"Network error: {e}"}
+
+    if resp.status_code == 404:
+        return {
+            "status": "error",
+            "detail": (
+                f"{discovery_url} returned 404. Double-check the Issuer URL — "
+                "for Keycloak it's `<base>/realms/<realm>`, for Entra ID "
+                "`https://login.microsoftonline.com/<tenant>/v2.0`."
+            ),
+        }
+    if resp.status_code != 200:
+        return {
+            "status": "error",
+            "detail": f"Discovery endpoint returned HTTP {resp.status_code}.",
+        }
+
+    try:
+        doc = resp.json()
+    except ValueError:
+        return {"status": "error", "detail": "Discovery endpoint did not return valid JSON."}
+
+    required = ["authorization_endpoint", "token_endpoint", "jwks_uri"]
+    missing = [k for k in required if not doc.get(k)]
+    if missing:
+        return {
+            "status": "error",
+            "detail": f"Discovery doc is missing required fields: {', '.join(missing)}",
+        }
+
+    # Try to fetch the JWKS too — that's the next thing we'd hit at login time
+    try:
+        with httpx.Client(timeout=10) as client:
+            jwks_resp = client.get(doc["jwks_uri"])
+        if jwks_resp.status_code != 200:
+            return {
+                "status": "error",
+                "detail": f"JWKS endpoint returned HTTP {jwks_resp.status_code}.",
+            }
+    except Exception as e:  # noqa: BLE001
+        return {"status": "error", "detail": f"Could not reach JWKS: {e}"}
+
+    return {
+        "status": "ok",
+        "detail": "Discovery + JWKS reachable. Config looks plausible.",
+        "issuer": doc.get("issuer"),
+        "authorization_endpoint": doc.get("authorization_endpoint"),
+        "token_endpoint": doc.get("token_endpoint"),
+    }

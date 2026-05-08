@@ -3,6 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/
 import { NumberTicker } from "./ui/number-ticker";
 import { ChartContainer, type ChartConfig } from "./ui/chart";
 import { PolarGrid, PolarRadiusAxis, RadialBar, RadialBarChart } from "recharts";
+import {
+  RadarChart, Radar, PolarAngleAxis,
+} from "recharts";
 import { useTranslation } from "../hooks/use-translation";
 
 interface ComplianceSummaryCardProps {
@@ -12,11 +15,25 @@ interface ComplianceSummaryCardProps {
   inProgress: number;
   notImplemented: number;
   needsReview: number;
+  spiderData?: { cis_id: string; current: number; target: number }[];
+  benchmarkScore?: number;
+  benchmarkSpiderData?: { cis_id: string; current: number; target: number }[];
 }
 
 const radialConfig = {
   score: { label: "Score", color: "var(--color-info)" },
 } satisfies ChartConfig;
+
+const controlChartConfig = {
+  current: { label: "Current", color: "var(--color-info)" },
+  target: { label: "Target", color: "var(--color-border)" },
+} satisfies ChartConfig;
+
+const RADAR_COLORS: Record<string, string> = {
+  Basic: "var(--color-success)",
+  Foundational: "var(--color-info)",
+  Organizational: "var(--color-purple)",
+};
 
 interface MetricCardProps {
   label: string;
@@ -63,6 +80,9 @@ export function ComplianceSummaryCard({
   inProgress,
   notImplemented,
   needsReview,
+  spiderData,
+  benchmarkScore,
+  benchmarkSpiderData,
 }: ComplianceSummaryCardProps) {
   const { t } = useTranslation();
   const gaugeColor = score >= 80 ? "var(--color-success)" : score >= 60 ? "var(--color-warning)" : "var(--color-danger)";
@@ -80,41 +100,105 @@ export function ComplianceSummaryCard({
           </CardTitle>
           <CardDescription>{t("dashboard.compliance_overview_desc")}</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-6">
-            <ChartContainer config={radialConfig} className="mx-auto h-36 w-36 shrink-0">
-              <RadialBarChart
-                data={radialData}
-                endAngle={100}
-                innerRadius={45}
-                outerRadius={65}
-              >
-                <PolarGrid
-                  gridType="circle"
-                  radialLines={false}
-                  stroke="none"
-                  className="first:fill-muted last:fill-background"
-                  polarRadius={[60, 52]}
-                />
-                <RadialBar dataKey="score" background cornerRadius={4} fill={gaugeColor} />
-                <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
-                  <text
-                    x="50%"
-                    y="50%"
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    className="fill-foreground"
-                    style={{ fontSize: 18, fontWeight: 700 }}
-                  >
-                    {score}%
-                  </text>
-                </PolarRadiusAxis>
-              </RadialBarChart>
-            </ChartContainer>
-            <div className="text-center sm:text-left">
-              <div className="text-sm font-semibold">{t("dashboard.current_assessment")}</div>
-              <p className="text-xs text-muted mt-1 max-w-md">{t("dashboard.current_assessment_desc")}</p>
+        <CardContent className="space-y-6">
+          {/* Top row: gauge + spider web */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex flex-col items-center gap-3">
+              <ChartContainer config={radialConfig} className="mx-auto h-64 w-64 shrink-0">
+                <RadialBarChart
+                  data={radialData}
+                  endAngle={100}
+                  innerRadius={70}
+                  outerRadius={100}
+                >
+                  <PolarGrid
+                    gridType="circle"
+                    radialLines={false}
+                    stroke="none"
+                    className="first:fill-muted last:fill-background"
+                    polarRadius={[92, 80]}
+                  />
+                  <RadialBar dataKey="score" background cornerRadius={4} fill={gaugeColor} />
+                  <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
+                    <text
+                      x="50%"
+                      y="50%"
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      className="fill-foreground"
+                      style={{ fontSize: 28, fontWeight: 700 }}
+                    >
+                      {score}%
+                    </text>
+                  </PolarRadiusAxis>
+                </RadialBarChart>
+              </ChartContainer>
+              <div className="text-center">
+                <div className="text-sm font-semibold">{t("dashboard.current_assessment")}</div>
+                <p className="text-xs text-muted mt-1 max-w-md">{t("dashboard.current_assessment_desc")}</p>
+                {benchmarkScore !== undefined && (
+                  <p className="text-xs text-muted mt-1">
+                    {t("dashboard.industry_avg")}: <span className="font-medium text-foreground">{benchmarkScore}%</span>
+                  </p>
+                )}
+              </div>
             </div>
+
+            {spiderData && spiderData.length > 0 && (
+              <div>
+                <div className="text-center text-sm font-medium mb-2">{t("dashboard.spider_18")}</div>
+                <ChartContainer config={controlChartConfig} className="aspect-square h-64 mx-auto">
+                  <RadarChart data={spiderData.map((d, i) => ({ ...d, benchmark: benchmarkSpiderData?.[i]?.current ?? 0 }))}>
+                    <PolarGrid stroke="var(--color-border)" />
+                    <PolarAngleAxis dataKey="cis_id" tick={{ fill: "var(--color-muted-foreground)", fontSize: 9 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: "var(--color-muted)", fontSize: 9 }} />
+                    <Radar
+                      name="Target"
+                      dataKey="target"
+                      stroke="var(--color-border)"
+                      fill="var(--color-border)"
+                      fillOpacity={0.05}
+                      strokeWidth={1}
+                      strokeDasharray="4 4"
+                      dot={false}
+                    />
+                    <Radar
+                      name={t("dashboard.you")}
+                      dataKey="current"
+                      stroke="var(--color-current)"
+                      fill="var(--color-current)"
+                      fillOpacity={0.15}
+                      strokeWidth={2.5}
+                      dot={{ r: 3, fill: "var(--color-background)", stroke: "var(--color-current)", strokeWidth: 2 }}
+                    />
+                    {benchmarkSpiderData && (
+                      <Radar
+                        name={t("dashboard.industry")}
+                        dataKey="benchmark"
+                        stroke="var(--color-muted-foreground)"
+                        fill="var(--color-muted-foreground)"
+                        fillOpacity={0.05}
+                        strokeWidth={1.5}
+                        strokeDasharray="4 4"
+                        dot={false}
+                      />
+                    )}
+                  </RadarChart>
+                </ChartContainer>
+                <div className="mt-1 flex flex-wrap items-center justify-center gap-3 text-xs text-muted">
+                  {["Basic", "Foundational", "Organizational"].map((g) => (
+                    <div key={g} className="flex items-center gap-1.5">
+                      <span
+                        className="inline-block h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: RADAR_COLORS[g] || "var(--color-muted)" }}
+                      />
+                      <span>{t(`group.${g.toLowerCase()}`)}</span>
+                    </div>
+                  ))}
+                  <span className="text-[10px]">{t("dashboard.spider_tooltip_hint")}</span>
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

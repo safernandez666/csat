@@ -9,7 +9,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Select } from "../components/ui/select";
 import { api } from "../lib/api";
-import { formatDate } from "../lib/utils";
+import { formatDate, isSafeExternalUrl } from "../lib/utils";
 import { FileText, ExternalLink, Trash2, MessageSquare, Send, Pencil, Check, X, Sparkles, AlertCircle, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Spinner } from "../components/ui/spinner";
 import { useTranslation } from "../hooks/use-translation";
@@ -108,16 +108,25 @@ export default function ControlDetailPage() {
   const handleComment = async () => {
     if (!newComment.trim()) return;
     setSending(true);
-    await api.createComment(controlId, newComment);
-    setNewComment("");
-    refreshComments();
-    setSending(false);
+    try {
+      await api.createComment(controlId, newComment);
+      setNewComment("");
+      refreshComments();
+    } catch (e: any) {
+      alert(e.message || "Failed to post comment");
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleDeleteEvidence = async (evId: number) => {
     if (!confirm(t("control_detail.delete_confirm"))) return;
-    await api.deleteEvidence(evId);
-    refreshEvidence();
+    try {
+      await api.deleteEvidence(evId);
+      refreshEvidence();
+    } catch (e: any) {
+      alert(e.message || "Failed to delete evidence");
+    }
   };
 
   if (!control && controlLoading) {
@@ -288,7 +297,7 @@ export default function ControlDetailPage() {
                         <div className="flex items-center gap-2">
                           <FileText className="size-4 text-accent" />
                           <span className="text-sm font-medium">{ev.file_name || "Note"}</span>
-                          {ev.external_link && (
+                          {ev.external_link && isSafeExternalUrl(ev.external_link) && (
                             <a href={ev.external_link} target="_blank" rel="noreferrer" className="text-accent hover:underline">
                               <ExternalLink className="size-3" />
                             </a>

@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from app.models.control import Control
+from app.utils.safeguard_status import compute_control_score
 
 
 def compute_compliance_score(controls: list[Control]) -> int:
@@ -15,12 +16,8 @@ def compute_compliance_score(controls: list[Control]) -> int:
         return 0
     pcts: list[float] = []
     for c in controls:
-        sgs = c.safeguards
-        if not sgs:
-            pcts.append(100.0 if c.status == "implemented" else 0.0)
-            continue
-        done = sum(1 for s in sgs if s.implementation_status == "implemented")
-        pcts.append((done / len(sgs)) * 100.0)
+        score = compute_control_score(c)
+        pcts.append(score * 100.0)
     return round(sum(pcts) / len(pcts))
 
 
