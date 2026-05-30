@@ -30,13 +30,16 @@ def _slug_from_host(host: str) -> Optional[str]:
     bare = host.split(":")[0]
     if "." not in bare:
         return None
-    return bare.split(".")[0]
+    return bare.split(".")[0].lower()
 
 
 def _lookup_company(slug: str) -> Optional[Company]:
     engine = get_control_engine()
     with Session(engine) as s:
-        return s.query(Company).filter(Company.slug == slug).first()
+        company = s.query(Company).filter(Company.slug == slug).first()
+        if company is not None:
+            s.expunge(company)
+        return company
 
 
 class TenantMiddleware(BaseHTTPMiddleware):
@@ -50,6 +53,9 @@ class TenantMiddleware(BaseHTTPMiddleware):
             slug = request.headers.get("x-tenant-slug")
         else:
             slug = _slug_from_host(host)
+
+        if slug:
+            slug = slug.lower()
 
         if slug == "admin" or slug == "__admin__":
             request.state.tenant = None

@@ -77,6 +77,11 @@ os.makedirs(upload_dir, exist_ok=True)
 
 @app.get("/uploads/{filename}")
 def get_upload(filename: str, current_user: User = Depends(get_current_user)):
+    """Serve uploaded files (evidence, logos) only to authenticated users.
+
+    Path-traversal protection: resolves the requested path and checks that it
+    stays within the upload directory.
+    """
     base = Path(upload_dir).resolve()
     target = (base / filename).resolve()
     try:
@@ -90,6 +95,12 @@ def get_upload(filename: str, current_user: User = Depends(get_current_user)):
 
 @app.get("/api/branding/logo")
 def get_branding_logo(db: Session = Depends(get_db)):
+    """Serve the configured company logo without authentication.
+
+    This is the only public path into the upload dir: it resolves the file
+    from the `company_logo_url` setting, refuses anything outside /uploads/,
+    and applies the same path-traversal check as the authenticated route.
+    """
     s = db.query(Setting).filter(Setting.key == "company_logo_url").first()
     if not s or not s.value:
         raise HTTPException(status_code=404, detail="No logo configured")
