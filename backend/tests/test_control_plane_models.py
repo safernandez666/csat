@@ -2,14 +2,6 @@ from datetime import datetime
 import pytest
 
 
-@pytest.fixture(autouse=True)
-def reset_control_session():
-    """Ensure the module-level engine cache is cleared between tests."""
-    yield
-    from app.db.control_session import reset_for_tests
-    reset_for_tests()
-
-
 def test_company_round_trip(tmp_data_dir):
     from app.db.control_session import init_control_db, get_control_engine
     from app.models.control_plane import Company
@@ -40,11 +32,9 @@ def test_superuser_unique_email(tmp_data_dir):
         s.add(SuperUser(email="op@zebrasecurity.io", hashed_password="x"))
         s.commit()
         s.add(SuperUser(email="op@zebrasecurity.io", hashed_password="y"))
-        try:
+        with pytest.raises(IntegrityError):
             s.commit()
-            raise AssertionError("expected IntegrityError")
-        except IntegrityError:
-            s.rollback()
+        s.rollback()
 
 
 def test_audit_log_records_action(tmp_data_dir):

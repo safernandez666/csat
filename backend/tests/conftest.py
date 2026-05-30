@@ -24,3 +24,11 @@ def tmp_data_dir(tmp_path, monkeypatch):
     monkeypatch.setenv("UPLOAD_DIR", str(uploads_dir))
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-not-for-production-32b")
     yield {"data_dir": data_dir, "tenants_dir": tenants_dir, "uploads_dir": uploads_dir}
+
+
+@pytest.fixture(autouse=True)
+def reset_control_session():
+    """Dispose the cached control plane engine after each test."""
+    yield
+    from app.db import control_session
+    control_session.reset_for_tests()

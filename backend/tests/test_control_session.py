@@ -1,13 +1,4 @@
-import pytest
 from sqlalchemy import inspect
-
-
-@pytest.fixture(autouse=True)
-def reset_control_session():
-    """Ensure the module-level engine cache is cleared between tests."""
-    yield
-    from app.db.control_session import reset_for_tests
-    reset_for_tests()
 
 
 def test_init_control_db_creates_control_tables_only(tmp_data_dir):

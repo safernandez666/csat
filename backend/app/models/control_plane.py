@@ -3,11 +3,18 @@
 These never appear in tenant DBs because they inherit from `ControlBase`
 (separate MetaData from `TenantBase`).
 """
+import enum
 from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 
 from app.db.bases import ControlBase
+
+
+class CompanyStatus(str, enum.Enum):
+    ACTIVE = "active"
+    SUSPENDED = "suspended"
+    FAILED = "failed"
 
 
 class Company(ControlBase):
@@ -17,7 +24,7 @@ class Company(ControlBase):
     slug = Column(String, unique=True, nullable=False, index=True)
     name = Column(String, nullable=False)
     db_path = Column(String, nullable=False)
-    status = Column(String, nullable=False, default="active")  # active | suspended | failed
+    status = Column(String, nullable=False, default=CompanyStatus.ACTIVE.value)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     suspended_at = Column(DateTime, nullable=True)
 
