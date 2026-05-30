@@ -45,7 +45,8 @@ def get_control_db() -> Session:
     """FastAPI dependency yielding a control plane session."""
     if _SessionLocal is None:
         get_control_engine()
-    assert _SessionLocal is not None
+    if _SessionLocal is None:
+        raise RuntimeError("Control DB not initialised — call init_control_db() first")
     db = _SessionLocal()
     try:
         yield db

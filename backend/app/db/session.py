@@ -1,3 +1,5 @@
+from typing import Optional
+
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
@@ -44,7 +46,7 @@ def _apply_additive_migrations(target_engine: Engine) -> None:
                 conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {sql_type}"))
 
 
-def init_tenant_db(target_engine: Engine = None) -> None:
+def init_tenant_db(target_engine: Optional[Engine] = None) -> None:
     """Create the tenant schema on the given engine (defaults to the module-level one).
 
     Used in:
