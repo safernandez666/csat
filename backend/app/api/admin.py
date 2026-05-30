@@ -10,9 +10,10 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.security import (
-    verify_password, create_access_token, create_refresh_token,
+    verify_password, create_access_token,
     require_superadmin, TENANT_ADMIN,
 )
+from app.api.auth import rate_limit_login
 from app.db.control_session import get_control_db
 from app.models.control_plane import SuperUser
 
@@ -26,7 +27,6 @@ class SuperLoginRequest(BaseModel):
 
 class SuperTokenResponse(BaseModel):
     access_token: str
-    refresh_token: str
     token_type: str = "bearer"
 
 
@@ -40,7 +40,8 @@ class SuperProfile(BaseModel):
 
 @router.post("/auth/login", response_model=SuperTokenResponse)
 def super_login(req: SuperLoginRequest, response: Response, request: Request,
-                db: Session = Depends(get_control_db)):
+                db: Session = Depends(get_control_db),
+                _rate_limit=Depends(rate_limit_login)):
     if not getattr(request.state, "is_admin_plane", False):
         raise HTTPException(status_code=404, detail="Not found")
     su = db.query(SuperUser).filter(SuperUser.email == req.email).first()
@@ -48,9 +49,8 @@ def super_login(req: SuperLoginRequest, response: Response, request: Request,
         raise HTTPException(status_code=401, detail="Invalid credentials")
     payload = {"sub": str(su.id), "tenant": TENANT_ADMIN, "is_super": True}
     access = create_access_token(payload)
-    refresh = create_refresh_token(payload)
-    response.set_cookie("access_token", access, httponly=True, secure=settings.cookie_secure, samesite="lax")
-    return SuperTokenResponse(access_token=access, refresh_token=refresh)
+    response.set_cookie("access_token", access, httponly=True, secure=settings.cookie_secure, samesite="lax", max_age=settings.access_token_expire_minutes * 60)
+    return SuperTokenResponse(access_token=access)
 
 
 @router.post("/auth/logout")

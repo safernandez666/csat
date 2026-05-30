@@ -54,3 +54,26 @@ def test_admin_endpoints_not_reachable_from_tenant_plane(app, tmp_data_dir):
     # are guarded. Test those instead.
     me = c.get("/api/admin/auth/me", headers={"Authorization": "Bearer fake"})
     assert me.status_code in (401, 404)  # either is acceptable: 404 from dep, 401 from token
+
+
+def test_super_logout_clears_cookie(admin_client, tmp_data_dir):
+    """POST /api/admin/auth/logout clears the access_token cookie."""
+    _seed_super(tmp_data_dir)
+    admin_client.post("/api/admin/auth/login", json={"email": "op@zebra.io", "password": "Op12345!"})
+    # Cookie should be set after login.
+    assert "access_token" in admin_client.cookies
+    r = admin_client.post("/api/admin/auth/logout")
+    assert r.status_code == 200
+    assert r.json() == {"ok": True}
+    # delete_cookie sends a Set-Cookie with Max-Age=0; httpx clears it.
+    assert admin_client.cookies.get("access_token") in (None, "")
+
+
+def test_super_me_via_cookie(admin_client, tmp_data_dir):
+    """GET /api/admin/auth/me authenticates via the access_token cookie (no Bearer header)."""
+    _seed_super(tmp_data_dir)
+    admin_client.post("/api/admin/auth/login", json={"email": "op@zebra.io", "password": "Op12345!"})
+    # No Authorization header — only the cookie set by login.
+    me = admin_client.get("/api/admin/auth/me")
+    assert me.status_code == 200
+    assert me.json()["email"] == "op@zebra.io"

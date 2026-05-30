@@ -32,6 +32,16 @@ def reset_singletons():
     engine_pool.reset_for_tests()
 
 
+@pytest.fixture(autouse=True)
+def reset_rate_limit():
+    """Reset the in-memory rate limit store between tests."""
+    yield
+    import sys
+    auth_mod = sys.modules.get("app.api.auth")
+    if auth_mod is not None:
+        auth_mod.RATE_LIMIT_STORE.clear()
+
+
 @pytest.fixture
 def app(tmp_data_dir, reset_singletons):
     """Fresh FastAPI app with SaaS middleware active."""
