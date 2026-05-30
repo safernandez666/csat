@@ -35,6 +35,9 @@ frontend/dist/
 # Local data — never commit any client/customer state
 backend/csat.db
 backend/csat.db-journal
+backend/control.db
+backend/control.db-journal
+backend/data/
 backend/uploads/*
 !backend/uploads/.gitkeep
 backups/
