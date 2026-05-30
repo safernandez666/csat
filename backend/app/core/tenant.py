@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.engine_pool import get_pool
+from app.core.security import TENANT_ADMIN
 from app.db.control_session import get_control_engine
 from app.models.control_plane import Company
 
@@ -57,7 +58,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
         if slug:
             slug = slug.lower()
 
-        if slug == "admin" or slug == "__admin__":
+        if slug == "admin" or slug == TENANT_ADMIN:
             request.state.tenant = None
             request.state.engine = get_control_engine()
             request.state.is_admin_plane = True

@@ -9,6 +9,22 @@ from argon2.exceptions import VerifyMismatchError
 from app.core.config import settings
 from app.models.user import User
 
+TENANT_SINGLE = "_single_"
+TENANT_ADMIN = "__admin__"
+
+
+def resolve_tenant_slug(request) -> str:
+    """Return the tenant slug for the current request's plane.
+
+    - SaaS admin plane (TenantMiddleware sets `is_admin_plane=True`) → TENANT_ADMIN.
+    - SaaS tenant plane → the resolved `request.state.tenant.slug`.
+    - Single-tenant mode (or no tenant resolved) → TENANT_SINGLE.
+    """
+    if getattr(request.state, "is_admin_plane", False):
+        return TENANT_ADMIN
+    return getattr(getattr(request.state, "tenant", None), "slug", None) or TENANT_SINGLE
+
+
 ph = PasswordHasher(
     time_cost=settings.argon2_time_cost,
     memory_cost=settings.argon2_memory_cost,
@@ -66,10 +82,8 @@ async def get_current_user(
         payload = decode_token(token)
         if not payload or payload.get("type") != "access":
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-        expected_tenant = getattr(getattr(request.state, "tenant", None), "slug", None)
         if settings.is_saas:
-            if getattr(request.state, "is_admin_plane", False):
-                expected_tenant = "__admin__"
+            expected_tenant = resolve_tenant_slug(request)
             token_tenant = payload.get("tenant")
             if not token_tenant or token_tenant != expected_tenant:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token does not match tenant")

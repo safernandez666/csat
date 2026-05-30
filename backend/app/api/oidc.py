@@ -37,7 +37,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_admin
 from app.core.config import settings
-from app.core.security import create_access_token, create_refresh_token
+from app.core.security import create_access_token, create_refresh_token, resolve_tenant_slug
 from app.models.settings import Setting
 from app.models.user import Role, User
 from app.services.audit_service import log_action
@@ -152,9 +152,11 @@ def _resolve_groups(claims: dict, access_token: str | None, discovery: dict) -> 
     return []
 
 
-def _set_session_cookies(resp, user_id: int, email: str) -> None:
-    access = create_access_token({"sub": str(user_id), "email": email})
-    refresh = create_refresh_token({"sub": str(user_id)})
+def _set_session_cookies(resp, user_id: int, request: Request) -> None:
+    tenant_slug = resolve_tenant_slug(request)
+    token_payload = {"sub": str(user_id), "tenant": tenant_slug}
+    access = create_access_token(token_payload)
+    refresh = create_refresh_token(token_payload)
     resp.set_cookie("access_token", access, httponly=True, secure=settings.cookie_secure,
                     samesite="lax", max_age=settings.access_token_expire_minutes * 60)
     resp.set_cookie("refresh_token", refresh, httponly=True, secure=settings.cookie_secure,
@@ -325,7 +327,7 @@ def oidc_callback(request: Request, db: Session = Depends(get_db)):
 
     # 7) Emit the same JWT cookies the local login path uses, then redirect home
     resp = RedirectResponse("/", status_code=302)
-    _set_session_cookies(resp, user.id, user.email)
+    _set_session_cookies(resp, user.id, request)
     resp.delete_cookie("oidc_state")
     resp.delete_cookie("oidc_verifier")
     return resp

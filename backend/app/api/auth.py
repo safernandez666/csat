@@ -7,7 +7,7 @@ from collections import defaultdict
 from time import time
 
 from app.api.deps import get_db
-from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token, get_current_user
+from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token, get_current_user, resolve_tenant_slug
 from app.core.config import settings
 from app.models.user import User
 from app.services.audit_service import log_action
@@ -60,8 +60,7 @@ def login(req: LoginRequest, response: Response, request: Request, db: Session =
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account inactive")
 
-    tenant_slug = getattr(getattr(request.state, "tenant", None), "slug", None) or "_single_"
-    token_payload = {"sub": str(user.id), "tenant": tenant_slug}
+    token_payload = {"sub": str(user.id), "tenant": resolve_tenant_slug(request)}
     access = create_access_token(token_payload)
     refresh = create_refresh_token(token_payload)
 
@@ -94,12 +93,15 @@ def refresh_token(response: Response, request: Request, db: Session = Depends(ge
     payload = decode_token(token)
     if not payload or payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Invalid refresh token")
+    if settings.is_saas:
+        expected = resolve_tenant_slug(request)
+        if payload.get("tenant") != expected:
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
     user_id = int(payload.get("sub"))
     user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
-    tenant_slug = getattr(getattr(request.state, "tenant", None), "slug", None) or "_single_"
-    token_payload = {"sub": str(user.id), "tenant": tenant_slug}
+    token_payload = {"sub": str(user.id), "tenant": resolve_tenant_slug(request)}
     access = create_access_token(token_payload)
     refresh = create_refresh_token(token_payload)
     response.set_cookie(key="access_token", value=access, httponly=True, secure=settings.cookie_secure, samesite="lax", max_age=settings.access_token_expire_minutes * 60)  # ship-safe-ignore: httponly already True
