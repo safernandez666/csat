@@ -1,17 +1,10 @@
-"""Shared fixtures for the CSAT backend test suite.
-
-Each test gets:
-  - a tmp dir for control.db + tenants/
-  - a fresh EnginePool
-  - a FastAPI TestClient bound to a configurable Host
-"""
-import os
+"""Shared fixtures for the CSAT backend test suite."""
+import importlib
 import pytest
 
 
 @pytest.fixture
 def tmp_data_dir(tmp_path, monkeypatch):
-    """Point the app at a per-test tmp directory for all persistent state."""
     data_dir = tmp_path / "data"
     tenants_dir = data_dir / "tenants"
     uploads_dir = tmp_path / "uploads"
@@ -23,20 +16,37 @@ def tmp_data_dir(tmp_path, monkeypatch):
     monkeypatch.setenv("TENANTS_DIR", str(tenants_dir))
     monkeypatch.setenv("UPLOAD_DIR", str(uploads_dir))
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-not-for-production-32b")
+    # Force reload of modules that snapshot settings at import time.
+    from app.core import config as config_module
+    importlib.reload(config_module)
     yield {"data_dir": data_dir, "tenants_dir": tenants_dir, "uploads_dir": uploads_dir}
 
 
 @pytest.fixture(autouse=True)
-def reset_control_session():
-    """Dispose the cached control plane engine after each test."""
+def reset_singletons():
+    """Reset module-level singletons (control engine, pool) between tests."""
     yield
     from app.db import control_session
-    control_session.reset_for_tests()
-
-
-@pytest.fixture(autouse=True)
-def reset_engine_pool():
-    """Dispose the cached EnginePool singleton after each test."""
-    yield
     from app.core import engine_pool
+    control_session.reset_for_tests()
     engine_pool.reset_for_tests()
+
+
+@pytest.fixture
+def app(tmp_data_dir, reset_singletons):
+    """Fresh FastAPI app with SaaS middleware active."""
+    # Late import: settings and pool must be reset first.
+    import app.main as main_module
+    importlib.reload(main_module)
+    return main_module.app
+
+
+@pytest.fixture
+def admin_client(app):
+    from fastapi.testclient import TestClient
+    return TestClient(app, base_url="http://admin.csat.test")
+
+
+def tenant_client_for(app, slug: str):
+    from fastapi.testclient import TestClient
+    return TestClient(app, base_url=f"http://{slug}.csat.test")
