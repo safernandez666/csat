@@ -71,6 +71,10 @@ app.include_router(reports.router)
 app.include_router(settings_api.router)
 app.include_router(ai.router)
 
+if settings.is_saas:
+    from app.api import admin as admin_module
+    app.include_router(admin_module.router)
+
 upload_dir = os.path.abspath(settings.upload_dir)
 os.makedirs(upload_dir, exist_ok=True)
 
