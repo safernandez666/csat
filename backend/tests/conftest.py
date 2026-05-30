@@ -32,3 +32,11 @@ def reset_control_session():
     yield
     from app.db import control_session
     control_session.reset_for_tests()
+
+
+@pytest.fixture(autouse=True)
+def reset_engine_pool():
+    """Dispose the cached EnginePool singleton after each test."""
+    yield
+    from app.core import engine_pool
+    engine_pool.reset_for_tests()
