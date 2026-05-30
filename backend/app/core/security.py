@@ -66,6 +66,13 @@ async def get_current_user(
         payload = decode_token(token)
         if not payload or payload.get("type") != "access":
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        expected_tenant = getattr(getattr(request.state, "tenant", None), "slug", None)
+        if settings.is_saas:
+            if getattr(request.state, "is_admin_plane", False):
+                expected_tenant = "__admin__"
+            token_tenant = payload.get("tenant")
+            if not token_tenant or token_tenant != expected_tenant:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token does not match tenant")
         user_id = payload.get("sub")
         if not user_id:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")

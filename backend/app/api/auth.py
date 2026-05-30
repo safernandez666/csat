@@ -60,8 +60,10 @@ def login(req: LoginRequest, response: Response, request: Request, db: Session =
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account inactive")
 
-    access = create_access_token({"sub": str(user.id), "email": user.email})
-    refresh = create_refresh_token({"sub": str(user.id)})
+    tenant_slug = getattr(getattr(request.state, "tenant", None), "slug", None) or "_single_"
+    token_payload = {"sub": str(user.id), "tenant": tenant_slug}
+    access = create_access_token(token_payload)
+    refresh = create_refresh_token(token_payload)
 
     response.set_cookie(
         key="access_token",
@@ -96,8 +98,10 @@ def refresh_token(response: Response, request: Request, db: Session = Depends(ge
     user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
-    access = create_access_token({"sub": str(user.id), "email": user.email})
-    refresh = create_refresh_token({"sub": str(user.id)})
+    tenant_slug = getattr(getattr(request.state, "tenant", None), "slug", None) or "_single_"
+    token_payload = {"sub": str(user.id), "tenant": tenant_slug}
+    access = create_access_token(token_payload)
+    refresh = create_refresh_token(token_payload)
     response.set_cookie(key="access_token", value=access, httponly=True, secure=settings.cookie_secure, samesite="lax", max_age=settings.access_token_expire_minutes * 60)  # ship-safe-ignore: httponly already True
     response.set_cookie(key="refresh_token", value=refresh, httponly=True, secure=settings.cookie_secure, samesite="lax", max_age=settings.refresh_token_expire_days * 86400)  # ship-safe-ignore: httponly already True
     return TokenResponse(access_token=access, refresh_token=refresh)
