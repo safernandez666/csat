@@ -38,3 +38,42 @@ def test_require_superadmin_rejects_on_tenant_plane(app, tmp_data_dir):
     # Router not yet mounted: 404. After Task 11, hitting this from acme.* plane
     # should also be 404 because the dep rejects non-admin-plane requests.
     assert r.status_code == 404
+
+
+def test_superadmin_dep_rejects_non_numeric_sub(app, tmp_data_dir):
+    """A forged token with a non-numeric `sub` returns 401, not 500."""
+    from app.core.config import settings
+    from app.core.engine_pool import init_pool
+    from app.core.security import create_access_token, TENANT_ADMIN
+    init_pool(max_size=settings.engine_pool_max_size)
+
+    # Mint a token shaped exactly like a real superadmin token, but with
+    # `sub` set to a non-numeric string.
+    tok = create_access_token({"sub": "not-a-number", "tenant": TENANT_ADMIN, "is_super": True})
+
+    # Invoke the dependency directly — no admin-plane route is mounted until
+    # Task 11, so we can't go through the TestClient for this specific check.
+    import asyncio
+    from fastapi.security import HTTPAuthorizationCredentials
+    from app.core.security import get_current_superuser
+    from fastapi import HTTPException
+
+    class FakeState:
+        is_admin_plane = True
+        tenant = None
+
+    class FakeRequest:
+        def __init__(self, token):
+            self.state = FakeState()
+            self.cookies = {"access_token": token}
+            self.headers = {}
+
+    req = FakeRequest(tok)
+    creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=tok)
+
+    try:
+        asyncio.run(get_current_superuser(req, creds))
+        raise AssertionError("Expected HTTPException, none raised")
+    except HTTPException as e:
+        assert e.status_code == 401, f"expected 401, got {e.status_code}"
+        assert e.detail == "Invalid token", f"expected 'Invalid token', got {e.detail!r}"

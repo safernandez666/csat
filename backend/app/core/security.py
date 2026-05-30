@@ -120,7 +120,12 @@ async def get_current_superuser(
     request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_bearer),
 ):
-    """Resolve the current SuperUser. Only valid on the admin plane."""
+    """Resolve the current SuperUser. Only valid on the admin plane.
+
+    Returns 404 (not 401) for requests on the tenant plane so that the
+    existence of admin endpoints cannot be fingerprinted from tenant
+    subdomains — they look indistinguishable from any other missing route.
+    """
     if not getattr(request.state, "is_admin_plane", False):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     from app.db.control_session import get_control_db
@@ -135,11 +140,15 @@ async def get_current_superuser(
     sid = payload.get("sub")
     if not sid:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    try:
+        su_id = int(sid)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
     db_gen = get_control_db()
     db = next(db_gen)
     try:
-        su = db.query(SuperUser).filter(SuperUser.id == int(sid)).first()
+        su = db.query(SuperUser).filter(SuperUser.id == su_id).first()
         if not su:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="SuperUser missing")
         return su
