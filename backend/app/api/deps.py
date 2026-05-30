@@ -8,15 +8,16 @@ from app.core.security import get_current_user, require_admin, require_analyst, 
 def get_db(request: Request) -> Session:
     """Yield a SQLAlchemy session bound to the right engine.
 
-    - SaaS mode: TenantMiddleware sets request.state.engine per host.
-    - Single mode: fall back to the module-level engine in app.db.session.
+    - SaaS mode: TenantMiddleware sets request.state.engine per host;
+      we build a per-engine sessionmaker on the fly.
+    - Single mode: reuse the module-level SessionLocal cached in app.db.session.
     """
-    if settings.is_saas and hasattr(request.state, "engine"):
-        engine = request.state.engine
+    if settings.is_saas:
+        if not hasattr(request.state, "engine"):
+            raise RuntimeError("TenantMiddleware did not set request.state.engine")
+        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=request.state.engine)
     else:
-        from app.db.session import engine as default_engine
-        engine = default_engine
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        from app.db.session import SessionLocal
     db = SessionLocal()
     try:
         yield db

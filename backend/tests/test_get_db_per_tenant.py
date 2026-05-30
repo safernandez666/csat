@@ -4,8 +4,9 @@ def test_get_db_returns_tenant_session(app, tmp_data_dir):
     from app.core.engine_pool import get_pool, init_pool
     from app.models.control_plane import Company
     from sqlalchemy.orm import Session
+    from app.core.config import settings
     init_control_db()
-    init_pool(max_size=128)
+    init_pool(max_size=settings.engine_pool_max_size)
 
     # Provision two tenants on disk by hand for this test.
     with Session(get_control_engine()) as s:
