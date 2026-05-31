@@ -10,11 +10,11 @@ def log_super_action(action: str, super_user_id: int | None,
                      company_id: int | None = None,
                      metadata: dict[str, Any] | None = None) -> None:
     """Append a TenantAuditLog row. super_user_id may be None for system-driven
-    actions (e.g., scheduled backups), in which case we record a synthetic 0.
+    actions (e.g., scheduled backups), recorded as NULL in the FK column.
     """
     with Session(get_control_engine()) as s:
         s.add(TenantAuditLog(
-            super_user_id=super_user_id or 0,
+            super_user_id=super_user_id,
             company_id=company_id,
             action=action,
             metadata_=metadata or {},

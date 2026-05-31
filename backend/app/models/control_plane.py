@@ -45,7 +45,7 @@ class TenantAuditLog(ControlBase):
     __tablename__ = "tenant_audit_log"
 
     id = Column(Integer, primary_key=True, index=True)
-    super_user_id = Column(Integer, ForeignKey("super_users.id"), nullable=False)
+    super_user_id = Column(Integer, ForeignKey("super_users.id"), nullable=True)
     company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
     action = Column(String, nullable=False)
     # SQLAlchemy reserves `metadata`, so we use `metadata_` in Python.

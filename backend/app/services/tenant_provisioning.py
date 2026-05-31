@@ -55,6 +55,13 @@ def create_tenant(slug: str, name: str, admin_email: str, admin_full_name: str,
         temp_password = secrets.token_urlsafe(16)
         with Session(engine) as ts:
             seed_database(ts)
+            # SaaS provisioning: remove the well-known default users that seed_database
+            # creates (admin@csat.local et al) — those are dev-only and would be backdoors
+            # in a multi-tenant deployment.
+            default_users = ts.query(User).filter(User.email.like("%@csat.local")).all()
+            for u in default_users:
+                ts.delete(u)
+            ts.flush()
             admin_role = ts.query(Role).filter_by(name="Admin").first()
             if admin_role is None:
                 raise RuntimeError("Admin role missing after seed")
@@ -82,6 +89,7 @@ def create_tenant(slug: str, name: str, admin_email: str, admin_full_name: str,
                 os.remove(db_path)
         except OSError:
             pass
+        get_pool().evict(slug)  # drop the cached engine, file is gone
         try:
             if os.path.isdir(uploads_path):
                 shutil.rmtree(uploads_path, ignore_errors=True)
@@ -98,9 +106,10 @@ def suspend_tenant(slug: str, super_user_id: Optional[int]) -> None:
             raise LookupError(slug)
         c.status = "suspended"
         c.suspended_at = datetime.now(timezone.utc)
+        company_id = c.id
         cs.commit()
     get_pool().evict(slug)
-    log_super_action("company.suspend", super_user_id, None, {"slug": slug})
+    log_super_action("company.suspend", super_user_id, company_id, {"slug": slug})
 
 
 def activate_tenant(slug: str, super_user_id: Optional[int]) -> None:
@@ -110,8 +119,9 @@ def activate_tenant(slug: str, super_user_id: Optional[int]) -> None:
             raise LookupError(slug)
         c.status = "active"
         c.suspended_at = None
+        company_id = c.id
         cs.commit()
-    log_super_action("company.activate", super_user_id, None, {"slug": slug})
+    log_super_action("company.activate", super_user_id, company_id, {"slug": slug})
 
 
 def reset_tenant_admin_password(slug: str, super_user_id: Optional[int]) -> dict:
@@ -119,7 +129,10 @@ def reset_tenant_admin_password(slug: str, super_user_id: Optional[int]) -> dict
         c = cs.query(Company).filter_by(slug=slug).first()
         if not c:
             raise LookupError(slug)
-    engine = get_pool().get_or_open(c)
+        # Capture scalar fields while session is open — avoids DetachedInstanceError.
+        db_path = c.db_path
+        company_id = c.id
+    engine = get_pool().get_or_open(_DuckCompany(slug, db_path))
     with Session(engine) as ts:
         admin_role = ts.query(Role).filter_by(name="Admin").first()
         admin = (ts.query(User)
@@ -131,9 +144,10 @@ def reset_tenant_admin_password(slug: str, super_user_id: Optional[int]) -> dict
         admin.hashed_password = hash_password(new_pw)
         if hasattr(User, "must_change_password"):
             admin.must_change_password = True
+        admin_email = admin.email  # capture before session close
         ts.commit()
-    log_super_action("admin.reset_password", super_user_id, None, {"slug": slug})
-    return {"admin_email": admin.email, "temp_password": new_pw}
+    log_super_action("admin.reset_password", super_user_id, company_id, {"slug": slug})
+    return {"admin_email": admin_email, "temp_password": new_pw}
 
 
 class _DuckCompany:
