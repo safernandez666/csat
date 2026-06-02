@@ -140,7 +140,10 @@ def suspend_company(slug: str,
         suspend_tenant(slug, super_user_id=current.id)
     except LookupError:
         raise HTTPException(status_code=404, detail="Not found")
-    return db.query(Company).filter_by(slug=slug).first()
+    c = db.query(Company).filter_by(slug=slug).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Not found")
+    return c
 
 
 @router.post("/companies/{slug}/activate", response_model=CompanySummary)
@@ -151,7 +154,10 @@ def activate_company(slug: str,
         activate_tenant(slug, super_user_id=current.id)
     except LookupError:
         raise HTTPException(status_code=404, detail="Not found")
-    return db.query(Company).filter_by(slug=slug).first()
+    c = db.query(Company).filter_by(slug=slug).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Not found")
+    return c
 
 
 class AdminResetResponse(BaseModel):
