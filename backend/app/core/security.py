@@ -5,6 +5,7 @@ from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
+from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.models.user import User
@@ -90,7 +91,7 @@ async def get_current_user(
         user_id = payload.get("sub")
         if not user_id:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-        user = db.query(User).filter(User.id == int(user_id)).first()
+        user = db.query(User).options(selectinload(User.roles)).filter(User.id == int(user_id)).first()
         if not user or not user.is_active:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User inactive")
         return user

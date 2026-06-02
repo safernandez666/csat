@@ -57,3 +57,15 @@ def test_change_password_clears_flag(app, tmp_data_dir, admin_client):
     # New password works
     good = tc.post("/api/auth/login", json={"email": "admin@acme.example", "password": "NewPass123!"})
     assert good.status_code == 200
+
+
+def test_change_password_rejects_short_password(app, tmp_data_dir, admin_client):
+    tc, temp = _provision_and_login(app, tmp_data_dir, admin_client)
+    login = tc.post("/api/auth/login", json={"email": "admin@acme.example", "password": temp})
+    tok = login.json()["access_token"]
+    h = {"Authorization": f"Bearer {tok}"}
+
+    r = tc.post("/api/auth/change-password", headers=h,
+                json={"current_password": temp, "new_password": "short"})
+    assert r.status_code == 400
+    assert "too short" in r.json()["detail"].lower()

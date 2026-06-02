@@ -124,19 +124,20 @@ def logout(response: Response, request: Request, db: Session = Depends(get_db), 
 
 
 @router.get("/me", response_model=UserProfile)
-def me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    user = db.merge(current_user)
+def me(current_user: User = Depends(get_current_user)):
     return UserProfile(
-        id=user.id,
-        email=user.email,
-        full_name=user.full_name,
-        roles=[{"id": r.id, "name": r.name} for r in user.roles],
-        must_change_password=bool(user.must_change_password),
+        id=current_user.id,
+        email=current_user.email,
+        full_name=current_user.full_name,
+        roles=[{"id": r.id, "name": r.name} for r in current_user.roles],
+        must_change_password=bool(current_user.must_change_password),
     )
 
 
 @router.post("/change-password")
 def change_password(req: ChangePasswordRequest,
+                    request: Request,
+                    response: Response,
                     current_user: User = Depends(get_current_user),
                     db: Session = Depends(get_db)):
     user = db.merge(current_user)
@@ -146,6 +147,9 @@ def change_password(req: ChangePasswordRequest,
         raise HTTPException(status_code=400, detail="New password too short")
     user.hashed_password = hash_password(req.new_password)
     user.must_change_password = False
-    db.add(user)
     db.commit()
+    log_action(db, "password_changed", "user", resource_id=str(user.id),
+               user_id=user.id, ip_address=request.client.host if request.client else None)
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
     return {"ok": True}
