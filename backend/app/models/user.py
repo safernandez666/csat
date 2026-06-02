@@ -23,6 +23,7 @@ class User(Base):
     # OIDC subject ("sub" claim). Filled by JIT provisioning when the user signs
     # in via SSO. Locally-created users keep this NULL.
     external_id = Column(String, unique=True, nullable=True, index=True)
+    must_change_password = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 

@@ -33,7 +33,7 @@ def test_create_tenant_initialises_db_seeds_and_admin(tmp_data_dir):
         admin = ts.query(User).filter_by(email="admin@acme.test").one()
         roles = [r.name for r in admin.roles]
         assert "Admin" in roles
-        # assert admin.must_change_password is True  # re-enable after Task 14
+        assert admin.must_change_password is True
 
 
 def test_create_tenant_rejects_invalid_slug(tmp_data_dir):

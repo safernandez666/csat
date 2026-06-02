@@ -7,7 +7,7 @@ from collections import defaultdict
 from time import time
 
 from app.api.deps import get_db
-from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token, get_current_user, resolve_tenant_slug
+from app.core.security import verify_password, hash_password, create_access_token, create_refresh_token, decode_token, get_current_user, resolve_tenant_slug
 from app.core.config import settings
 from app.models.user import User
 from app.services.audit_service import log_action
@@ -46,9 +46,15 @@ class UserProfile(BaseModel):
     email: str
     full_name: str
     roles: list
+    must_change_password: bool = False
 
     class Config:
         from_attributes = True
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
 
 
 @router.post("/login", response_model=TokenResponse)  # ship-safe-ignore NO_RATE_LIMIT_LOGIN: in-memory rate limiter applied via dependency
@@ -118,10 +124,28 @@ def logout(response: Response, request: Request, db: Session = Depends(get_db), 
 
 
 @router.get("/me", response_model=UserProfile)
-def me(current_user: User = Depends(get_current_user)):
+def me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user = db.merge(current_user)
     return UserProfile(
-        id=current_user.id,
-        email=current_user.email,
-        full_name=current_user.full_name,
-        roles=[{"id": r.id, "name": r.name} for r in current_user.roles],
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        roles=[{"id": r.id, "name": r.name} for r in user.roles],
+        must_change_password=bool(user.must_change_password),
     )
+
+
+@router.post("/change-password")
+def change_password(req: ChangePasswordRequest,
+                    current_user: User = Depends(get_current_user),
+                    db: Session = Depends(get_db)):
+    user = db.merge(current_user)
+    if not user.hashed_password or not verify_password(req.current_password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password incorrect")
+    if len(req.new_password) < 8:
+        raise HTTPException(status_code=400, detail="New password too short")
+    user.hashed_password = hash_password(req.new_password)
+    user.must_change_password = False
+    db.add(user)
+    db.commit()
+    return {"ok": True}
