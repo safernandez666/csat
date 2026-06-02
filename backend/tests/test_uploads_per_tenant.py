@@ -76,3 +76,42 @@ def test_path_traversal_in_upload_filename_rejected(app, tmp_data_dir, admin_cli
     # The /uploads/{filename} handler must reject ../ traversal attempts
     r = tc.get("/uploads/../control.db", headers=h)
     assert r.status_code in (400, 404)
+
+
+def test_cross_tenant_file_access_rejected(app, tmp_data_dir, admin_client):
+    """Tenant B authenticated on its own subdomain must not be able to read
+    tenant A's evidence files via `/uploads/<filename>`.
+
+    The `get_upload` handler scopes `base` to `upload_dir/<requestor-slug>`,
+    so an acme-owned file is unreachable from a beta-authenticated request
+    even when the attacker knows the exact filename.
+    """
+    # Tenant A: upload a file
+    tc_a, ha = _seed_tenant_with_admin_login(app, admin_client, tmp_data_dir, "acme2")
+    r = tc_a.get("/api/controls", headers=ha)
+    assert r.status_code == 200
+    control_id = r.json()[0]["id"]
+    up = tc_a.post(
+        "/api/evidence",
+        headers=ha,
+        files={"file": ("secret.txt", b"acme2 secret", "text/plain")},
+        data={"control_id": str(control_id)},
+    )
+    assert up.status_code in (200, 201), up.text
+
+    # Recover the on-disk filename to use it in the cross-tenant attempt
+    acme_dir = os.path.join(str(tmp_data_dir["uploads_dir"]), "acme2")
+    fname = os.listdir(acme_dir)[0]
+
+    # Tenant B: provision separately, then try to fetch acme2's file
+    tc_b, hb = _seed_tenant_with_admin_login(app, admin_client, tmp_data_dir, "beta2")
+
+    # Directly by filename (handler scopes base to /uploads/beta2 → 404)
+    r1 = tc_b.get(f"/uploads/{fname}", headers=hb)
+    assert r1.status_code == 404, r1.text
+
+    # Or by guessing the full slug path (still resolves under /uploads/beta2/acme2/...
+    # which doesn't exist → 404; relative_to() does not raise because the path
+    # stays inside the beta2 base)
+    r2 = tc_b.get(f"/uploads/acme2/{fname}", headers=hb)
+    assert r2.status_code == 404, r2.text

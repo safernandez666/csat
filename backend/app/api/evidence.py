@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/evidence", tags=["evidence"])
 
 def _tenant_upload_dir(request: Request) -> str:
     from app.core import config as _config
-    base = _config.settings.upload_dir
+    base = os.path.abspath(_config.settings.upload_dir)
     if _config.settings.is_saas:
         tenant = getattr(request.state, "tenant", None)
         if not tenant:
