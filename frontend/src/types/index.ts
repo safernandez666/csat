@@ -3,6 +3,7 @@ export interface User {
   email: string;
   full_name: string;
   is_active: boolean;
+  must_change_password?: boolean;
   roles: { id: number; name: string }[];
 }
 
