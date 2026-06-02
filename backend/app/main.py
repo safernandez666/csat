@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import os
@@ -79,14 +79,22 @@ upload_dir = os.path.abspath(settings.upload_dir)
 os.makedirs(upload_dir, exist_ok=True)
 
 
-@app.get("/uploads/{filename}")
-def get_upload(filename: str, current_user: User = Depends(get_current_user)):
+@app.get("/uploads/{filename:path}")
+def get_upload(filename: str, request: Request, current_user: User = Depends(get_current_user)):
     """Serve uploaded files (evidence, logos) only to authenticated users.
 
     Path-traversal protection: resolves the requested path and checks that it
-    stays within the upload directory.
+    stays within the upload directory. In SaaS mode, further scopes the base
+    to the tenant's own subdirectory so cross-tenant access is impossible.
     """
-    base = Path(upload_dir).resolve()
+    if settings.is_saas:
+        tenant = getattr(request.state, "tenant", None)
+        if not tenant:
+            raise HTTPException(status_code=404, detail="Not found")
+        base = Path(upload_dir).resolve() / tenant.slug
+    else:
+        base = Path(upload_dir).resolve()
+    base = base.resolve()
     target = (base / filename).resolve()
     try:
         target.relative_to(base)
