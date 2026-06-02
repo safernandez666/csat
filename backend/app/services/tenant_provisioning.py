@@ -10,7 +10,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
+from app.core import config as _config
 from app.core.engine_pool import get_pool
 from app.core.tenant import validate_slug
 from app.db.control_session import get_control_engine
@@ -23,11 +23,11 @@ from app.services.tenant_audit import log_super_action
 
 
 def _tenant_db_path(slug: str) -> str:
-    return str(Path(settings.tenants_dir) / f"{slug}.db")
+    return str(Path(_config.settings.tenants_dir) / f"{slug}.db")
 
 
 def _tenant_uploads_dir(slug: str) -> str:
-    return str(Path(settings.upload_dir) / slug)
+    return str(Path(_config.settings.upload_dir) / slug)
 
 
 def create_tenant(slug: str, name: str, admin_email: str, admin_full_name: str,
