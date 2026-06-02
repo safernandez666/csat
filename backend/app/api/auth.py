@@ -21,9 +21,11 @@ RATE_LIMIT_WINDOW = 60
 
 def rate_limit_login(request: Request):
     client_ip = request.client.host if request.client else "unknown"
+    tenant = getattr(getattr(request.state, "tenant", None), "slug", "_single_")
+    key = f"{tenant}:{client_ip}"
     now = time()
-    window = [t for t in RATE_LIMIT_STORE[client_ip] if now - t < RATE_LIMIT_WINDOW]
-    RATE_LIMIT_STORE[client_ip] = window
+    window = [t for t in RATE_LIMIT_STORE[key] if now - t < RATE_LIMIT_WINDOW]
+    RATE_LIMIT_STORE[key] = window
     if len(window) >= RATE_LIMIT_MAX:
         raise HTTPException(status_code=429, detail="Too many login attempts. Please try again later.")
     window.append(now)
