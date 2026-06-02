@@ -184,8 +184,11 @@ class BackupResponse(BaseModel):
 @router.post("/companies/{slug}/backup", response_model=BackupResponse)
 def backup_company(slug: str, current: SuperUser = Depends(require_superadmin)):
     try:
-        path = snapshot_tenant(slug)
+        result = snapshot_tenant(slug)
     except LookupError:
         raise HTTPException(status_code=404, detail="Not found")
-    log_super_action("company.backup", current.id, None, {"slug": slug, "path": path})
-    return BackupResponse(archive_path=path)
+    log_super_action(
+        "company.backup", current.id, result["company_id"],
+        {"slug": slug, "path": result["archive_path"]},
+    )
+    return BackupResponse(archive_path=result["archive_path"])

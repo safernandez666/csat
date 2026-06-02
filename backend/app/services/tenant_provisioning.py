@@ -161,13 +161,24 @@ class _DuckCompany:
         self.db_path = db_path
 
 
-def snapshot_tenant(slug: str, backups_dir: str = "./backups") -> str:
-    """Produce a tar.gz of <slug>.db + uploads/<slug>/. Returns archive path."""
+def snapshot_tenant(slug: str, backups_dir: str = "./backups") -> dict:
+    """Produce a tar.gz of <slug>.db + uploads/<slug>/.
+
+    Returns dict with `archive_path` (absolute) and `company_id`.
+
+    NOTE: This is a file-level copy, not a SQLite-native backup. If the
+    tenant has active write traffic at the moment of `tar.add`, the
+    archive may capture a transiently inconsistent DB. For a
+    crash-consistent snapshot, suspend the tenant first (which evicts
+    its engine and closes connections) before invoking this helper.
+    """
+    backups_dir = os.path.abspath(backups_dir)
     with Session(get_control_engine()) as cs:
         c = cs.query(Company).filter_by(slug=slug).first()
         if not c:
             raise LookupError(slug)
         db_path = c.db_path
+        company_id = c.id
         upload_subdir = _tenant_uploads_dir(slug)
 
     os.makedirs(backups_dir, exist_ok=True)
@@ -178,4 +189,4 @@ def snapshot_tenant(slug: str, backups_dir: str = "./backups") -> str:
             tar.add(db_path, arcname=f"{slug}/{os.path.basename(db_path)}")
         if os.path.isdir(upload_subdir):
             tar.add(upload_subdir, arcname=f"{slug}/uploads")
-    return archive_path
+    return {"archive_path": archive_path, "company_id": company_id}
