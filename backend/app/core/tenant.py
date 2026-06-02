@@ -59,6 +59,14 @@ class TenantMiddleware(BaseHTTPMiddleware):
             slug = slug.lower()
 
         if slug == "admin" or slug == TENANT_ADMIN:
+            # Admin plane: only super-admin endpoints (/api/admin/*) reach
+            # handlers. Other /api/* paths would crash with `no such table`
+            # against the control DB (which has no `users`, `settings`,
+            # etc.), so 404 them — mirror the off-plane stealth pattern.
+            # Static frontend assets (/, /index.html, /assets/*) pass through.
+            path = request.url.path
+            if path.startswith("/api/") and not path.startswith("/api/admin/"):
+                return JSONResponse({"detail": "Not found"}, status_code=404)
             request.state.tenant = None
             request.state.engine = get_control_engine()
             request.state.is_admin_plane = True

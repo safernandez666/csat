@@ -62,35 +62,30 @@ def test_token_with_no_tenant_claim_rejected(app, tmp_data_dir):
 
 
 def test_admin_plane_token_round_trip(app, tmp_data_dir):
-    """A super-admin-shaped token issued on the admin plane must be accepted on the admin plane."""
+    """A super-admin-shaped token is accepted on the admin plane (via the
+    proper /api/admin/auth/me endpoint).
+
+    History: pre-Task-10 this probed /api/auth/me on admin plane to verify
+    the tenant claim was honored without crossing planes. Task 10 added
+    SuperUser + /api/admin/auth/me as the real admin probe, and a later
+    middleware path guard now 404s tenant API paths on admin plane
+    (test_tenant_middleware::test_admin_plane_blocks_tenant_api_paths
+    covers that). This test was updated to use the modern admin endpoint.
+    """
     from app.core.config import settings
     from app.core.engine_pool import init_pool
     from app.core.security import create_access_token, TENANT_ADMIN
-    from app.db.control_session import init_control_db, get_control_engine
-    from app.db.session import init_tenant_db
+    from app.db.control_session import init_control_db
     init_pool(max_size=settings.engine_pool_max_size)
-
-    # Ensure the control DB exists so TenantMiddleware can route the admin plane.
     init_control_db()
-    # Bootstrap the tenant schema on the control engine so the User query in
-    # get_current_user finds an (empty) users table instead of raising OperationalError.
-    # The SuperUser model arrives in Task 10; until then, the admin plane reuses the
-    # regular User model against the control engine.
-    init_tenant_db(get_control_engine())
 
-    # Forge a token shaped like the one login() would issue on the admin plane.
-    # We don't go through /api/auth/login here because the SuperUser model+endpoint
-    # arrive in Tasks 10-11; we're testing only the issuance/enforcement contract.
-    tok = create_access_token({"sub": "1", "tenant": TENANT_ADMIN})
+    # Forge a SuperUser-shaped token. No real SuperUser exists, so we expect
+    # 401 at the SuperUser lookup — what matters is we get PAST the tenant
+    # check (no "Token does not match tenant" 401).
+    tok = create_access_token({"sub": "1", "tenant": TENANT_ADMIN, "is_super": True})
 
     from fastapi.testclient import TestClient
-    # admin.csat.test → middleware routes to admin plane → get_current_user expects __admin__.
-    # But /api/auth/me requires a real User row; since no admin-plane user model exists yet,
-    # we can't get a 200. Instead, assert we get past the tenant check (i.e. NOT the
-    # "Token does not match tenant" 401) — the request should fail with "User inactive"
-    # because user id=1 doesn't exist in the (empty) control plane users table.
     c = TestClient(app, base_url="http://admin.csat.test")
-    r = c.get("/api/auth/me", headers={"Authorization": f"Bearer {tok}"})
+    r = c.get("/api/admin/auth/me", headers={"Authorization": f"Bearer {tok}"})
     assert r.status_code == 401
-    # Crucially: not the cross-tenant 401.
     assert r.json().get("detail") != "Token does not match tenant"
