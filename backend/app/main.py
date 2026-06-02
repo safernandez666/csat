@@ -23,10 +23,33 @@ from app.api.deps import get_db
 async def lifespan(app: FastAPI):
     configure_logging()
     if settings.is_saas:
-        from app.db.control_session import init_control_db
+        from app.db.control_session import init_control_db, get_control_engine
         from app.core.engine_pool import init_pool
+        from app.models.control_plane import Company, SuperUser
+        from app.services.tenant_provisioning import create_tenant
+        from app.core.security import hash_password
+        from sqlalchemy.orm import Session
         init_control_db()
         init_pool(max_size=settings.engine_pool_max_size)
+        if settings.is_dev:
+            with Session(get_control_engine()) as s:
+                if not s.query(SuperUser).first():
+                    s.add(SuperUser(email="op@zebra.local", hashed_password=hash_password("Op12345!")))
+                    s.commit()
+                if not s.query(Company).filter_by(slug=settings.dev_tenant_slug).first():
+                    create_tenant(slug=settings.dev_tenant_slug, name="Dev Tenant",
+                                  admin_email="admin@csat.local", admin_full_name="Dev Admin",
+                                  super_user_id=None)
+                    # Override the random temp password with the well-known dev one.
+                    from app.models.user import User
+                    from app.core.engine_pool import get_pool
+                    c = s.query(Company).filter_by(slug=settings.dev_tenant_slug).first()
+                    engine = get_pool().get_or_open(c)
+                    with Session(engine) as ts:
+                        u = ts.query(User).filter_by(email="admin@csat.local").first()
+                        u.hashed_password = hash_password("Admin123!")
+                        u.must_change_password = False
+                        ts.commit()
     else:
         init_db()
         from app.db.session import SessionLocal
