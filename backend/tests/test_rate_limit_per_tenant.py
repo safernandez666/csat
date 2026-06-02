@@ -22,12 +22,14 @@ def _seed_two(tmp_data_dir, admin_client):
 
 
 def test_brute_on_acme_does_not_lock_beta(app, tmp_data_dir, admin_client):
+    from app.api.auth import RATE_LIMIT_MAX
+
     _seed_two(tmp_data_dir, admin_client)
     from fastapi.testclient import TestClient
     ca = TestClient(app, base_url="http://acme.csat.test")
     cb = TestClient(app, base_url="http://beta.csat.test")
-    # Exhaust acme's per-IP, per-tenant budget.
-    for _ in range(6):
+    # Exhaust acme's per-IP, per-tenant budget (last iteration trips 429).
+    for _ in range(RATE_LIMIT_MAX + 1):
         ca.post("/api/auth/login", json={"email": "x@x.com", "password": "wrong"})
     # acme: subsequent attempt rate-limited.
     r = ca.post("/api/auth/login", json={"email": "x@x.com", "password": "wrong"})
