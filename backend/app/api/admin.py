@@ -21,7 +21,9 @@ from app.db.control_session import get_control_db
 from app.models.control_plane import Company, SuperUser
 from app.services.tenant_provisioning import (
     create_tenant, suspend_tenant, activate_tenant, reset_tenant_admin_password,
+    snapshot_tenant,
 )
+from app.services.tenant_audit import log_super_action
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -173,3 +175,17 @@ def admin_reset(slug: str,
     except LookupError:
         raise HTTPException(status_code=404, detail="Not found")
     return AdminResetResponse(admin_email=result["admin_email"], temp_password=result["temp_password"])
+
+
+class BackupResponse(BaseModel):
+    archive_path: str
+
+
+@router.post("/companies/{slug}/backup", response_model=BackupResponse)
+def backup_company(slug: str, current: SuperUser = Depends(require_superadmin)):
+    try:
+        path = snapshot_tenant(slug)
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Not found")
+    log_super_action("company.backup", current.id, None, {"slug": slug, "path": path})
+    return BackupResponse(archive_path=path)

@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import secrets
 import shutil
+import tarfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -158,3 +159,23 @@ class _DuckCompany:
     def __init__(self, slug: str, db_path: str):
         self.slug = slug
         self.db_path = db_path
+
+
+def snapshot_tenant(slug: str, backups_dir: str = "./backups") -> str:
+    """Produce a tar.gz of <slug>.db + uploads/<slug>/. Returns archive path."""
+    with Session(get_control_engine()) as cs:
+        c = cs.query(Company).filter_by(slug=slug).first()
+        if not c:
+            raise LookupError(slug)
+        db_path = c.db_path
+        upload_subdir = _tenant_uploads_dir(slug)
+
+    os.makedirs(backups_dir, exist_ok=True)
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+    archive_path = os.path.join(backups_dir, f"{slug}-{ts}.tar.gz")
+    with tarfile.open(archive_path, "w:gz") as tar:
+        if os.path.exists(db_path):
+            tar.add(db_path, arcname=f"{slug}/{os.path.basename(db_path)}")
+        if os.path.isdir(upload_subdir):
+            tar.add(upload_subdir, arcname=f"{slug}/uploads")
+    return archive_path
