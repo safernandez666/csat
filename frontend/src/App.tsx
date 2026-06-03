@@ -7,6 +7,7 @@ import { Spinner } from "./components/ui/spinner";
 import { Toaster } from "./components/ui/toaster";
 import LoginPage from "./pages/login";
 import ChangePasswordPage from "./pages/change-password";
+import TenantNotFoundPage from "./pages/tenant-not-found";
 import DashboardPage from "./pages/dashboard";
 import ControlsPage from "./pages/controls";
 import ControlDetailPage from "./pages/control-detail";
@@ -36,6 +37,7 @@ function App() {
   const [path, setPath] = useState(window.location.pathname);
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [tenantMissing, setTenantMissing] = useState(false);
 
   useEffect(() => {
     const onPop = () => setPath(window.location.pathname);
@@ -58,6 +60,13 @@ function App() {
 
     fetch("/api/auth/me", { credentials: "include" })
       .then(async (r) => {
+        // Distinguish "tenant doesn't exist" (middleware rejects all /api/*
+        // with 404) from "unauthenticated" (route reachable, 401).
+        if (r.status === 404) {
+          setTenantMissing(true);
+          setAuthenticated(false);
+          return;
+        }
         setAuthenticated(r.ok);
         if (r.ok) {
           try {
@@ -90,6 +99,10 @@ function App() {
         <Spinner className="text-accent" />
       </div>
     );
+  }
+
+  if (tenantMissing) {
+    return <TenantNotFoundPage />;
   }
 
   if (!authenticated || path === "/login") { // ship-safe-ignore: frontend route check, rate-limit is backend
