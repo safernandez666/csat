@@ -350,24 +350,24 @@ export default function CompaniesPage() {
           <CardContent className="pt-0">
             <div className="rounded-lg border border-border bg-card/50 p-4 space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Slug (subdominio)</label>
+                <div className="flex flex-col gap-1">
+                  <label className="block text-xs font-medium text-muted leading-4 min-h-4">Slug (subdominio)</label>
                   <Input
                     placeholder="acme"
                     value={form.slug}
                     onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })}
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Nombre de la empresa</label>
+                <div className="flex flex-col gap-1">
+                  <label className="block text-xs font-medium text-muted leading-4 min-h-4">Nombre de la empresa</label>
                   <Input
                     placeholder="Acme Corp"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Email del admin</label>
+                <div className="flex flex-col gap-1">
+                  <label className="block text-xs font-medium text-muted leading-4 min-h-4">Email del admin</label>
                   <Input
                     type="email"
                     placeholder="admin@acme.com"
@@ -375,8 +375,8 @@ export default function CompaniesPage() {
                     onChange={(e) => setForm({ ...form, admin_email: e.target.value })}
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Nombre completo del admin</label>
+                <div className="flex flex-col gap-1">
+                  <label className="block text-xs font-medium text-muted leading-4 min-h-4">Nombre completo del admin</label>
                   <Input
                     placeholder="Juan Pérez"
                     value={form.admin_full_name}
