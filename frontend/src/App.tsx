@@ -37,7 +37,7 @@ function App() {
   const [path, setPath] = useState(window.location.pathname);
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
-  const [tenantMissing, setTenantMissing] = useState(false);
+  const [tenantStatus, setTenantStatus] = useState<"ok" | "missing" | "suspended">("ok");
 
   useEffect(() => {
     const onPop = () => setPath(window.location.pathname);
@@ -60,10 +60,17 @@ function App() {
 
     fetch("/api/auth/me", { credentials: "include" })
       .then(async (r) => {
-        // Distinguish "tenant doesn't exist" (middleware rejects all /api/*
-        // with 404) from "unauthenticated" (route reachable, 401).
+        // 404 means the TenantMiddleware rejected the request before it
+        // reached the route. The body's `detail` distinguishes the cause:
+        //   "Not found" → tenant doesn't exist
+        //   "Suspended" → tenant exists but is not active
         if (r.status === 404) {
-          setTenantMissing(true);
+          try {
+            const body = await r.json();
+            setTenantStatus(body?.detail === "Suspended" ? "suspended" : "missing");
+          } catch {
+            setTenantStatus("missing");
+          }
           setAuthenticated(false);
           return;
         }
@@ -101,8 +108,8 @@ function App() {
     );
   }
 
-  if (tenantMissing) {
-    return <TenantNotFoundPage />;
+  if (tenantStatus !== "ok") {
+    return <TenantNotFoundPage mode={tenantStatus} />;
   }
 
   if (!authenticated || path === "/login") { // ship-safe-ignore: frontend route check, rate-limit is backend

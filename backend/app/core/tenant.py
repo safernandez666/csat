@@ -76,8 +76,15 @@ class TenantMiddleware(BaseHTTPMiddleware):
             return JSONResponse({"detail": "Not found"}, status_code=404)
 
         company = _lookup_company(slug)
-        if not company or company.status != "active":
+        if not company:
             return JSONResponse({"detail": "Not found"}, status_code=404)
+        if company.status != "active":
+            # Same status code as "not found" to keep the route surface
+            # consistent, but a distinct detail so the SPA can render a
+            # "suspended — contact admin" page instead of "tenant doesn't
+            # exist". The slug existing is already implied by the
+            # subdomain itself, so we're not leaking new info here.
+            return JSONResponse({"detail": "Suspended"}, status_code=404)
 
         request.state.tenant = company
         request.state.engine = get_pool().get_or_open(company)

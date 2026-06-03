@@ -9,6 +9,30 @@ def test_unknown_tenant_returns_404(app):
     with TestClient(app, base_url="http://does-not-exist.csat.test") as c:
         r = c.get("/health")
     assert r.status_code == 404
+    assert r.json()["detail"] == "Not found"
+
+
+def test_suspended_tenant_returns_404_with_distinct_detail(app, tmp_data_dir):
+    """Suspended tenant: same 404 status as unknown, but a distinct detail
+    so the SPA can render a 'suspended — contact admin' page instead of
+    'tenant does not exist'."""
+    from app.db.control_session import init_control_db, get_control_engine
+    from app.models.control_plane import Company
+    from sqlalchemy.orm import Session
+    init_control_db()
+    with Session(get_control_engine()) as s:
+        s.add(Company(
+            slug="paused",
+            name="Paused Corp",
+            db_path=str(tmp_data_dir["tenants_dir"] / "paused.db"),
+            status="suspended",
+        ))
+        s.commit()
+    from fastapi.testclient import TestClient
+    with TestClient(app, base_url="http://paused.csat.test") as c:
+        r = c.get("/health")
+    assert r.status_code == 404
+    assert r.json()["detail"] == "Suspended"
 
 
 def test_reserved_slug_returns_404(app):
