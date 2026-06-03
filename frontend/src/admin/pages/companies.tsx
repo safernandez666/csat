@@ -288,6 +288,14 @@ export default function CompaniesPage() {
     setRowLoading(slug, "backup");
     try {
       const data = await adminApi.backupCompany(slug);
+      // Trigger browser download of the just-created tarball. Same-origin
+      // anchor with `download` attribute sends cookies automatically.
+      const a = document.createElement("a");
+      a.href = adminApi.backupDownloadUrl(data.filename);
+      a.download = data.filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
       setActionResult({ type: "backup", slug, data: { archive_path: data.archive_path } });
     } catch (e: any) {
       alert(e.message);

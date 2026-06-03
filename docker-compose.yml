@@ -19,6 +19,10 @@ services:
     volumes:
       - csat-data:/app/data
       - csat-uploads:/app/uploads
+      # Backups generated via /api/admin/companies/{slug}/backup land in
+      # /app/backups (snapshot_tenant default). Without this volume mount
+      # they'd be wiped on every container recreate.
+      - csat-backups:/app/backups
     networks:
       - csat-network
     healthcheck:
@@ -70,6 +74,7 @@ services:
 volumes:
   csat-data:
   csat-uploads:
+  csat-backups:
   csat-keycloak-data:
 
 networks:

@@ -13,7 +13,11 @@ from typing import Optional
 # longer; lower if your threat model wants shorter exposure.
 SUPER_TOKEN_TTL = timedelta(hours=2)
 
+import os
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
@@ -207,6 +211,13 @@ def delete_company(slug: str,
 
 class BackupResponse(BaseModel):
     archive_path: str
+    filename: str
+
+
+# Backup files land in /app/backups inside the container, mounted to a
+# Docker volume (csat-backups) so they survive recreates. Download endpoint
+# only serves *.tar.gz under this dir, with strict path-traversal checks.
+_BACKUPS_DIR = os.path.abspath("./backups")
 
 
 @router.post("/companies/{slug}/backup", response_model=BackupResponse)
@@ -219,4 +230,31 @@ def backup_company(slug: str, current: SuperUser = Depends(require_superadmin)):
         "company.backup", current.id, result["company_id"],
         {"slug": slug, "path": result["archive_path"]},
     )
-    return BackupResponse(archive_path=result["archive_path"])
+    filename = os.path.basename(result["archive_path"])
+    return BackupResponse(archive_path=result["archive_path"], filename=filename)
+
+
+@router.get("/backups/{filename}")
+def download_backup(filename: str,
+                    current: SuperUser = Depends(require_superadmin)):
+    """Stream a previously created tenant backup tarball to the operator.
+
+    Hardened: only accepts filenames matching the expected pattern (no
+    slashes, must end in .tar.gz), and the resolved path is forced to
+    stay under _BACKUPS_DIR to prevent traversal.
+    """
+    if "/" in filename or "\\" in filename or ".." in filename or not filename.endswith(".tar.gz"):
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    target = Path(_BACKUPS_DIR).resolve() / filename
+    target = target.resolve()
+    try:
+        target.relative_to(Path(_BACKUPS_DIR).resolve())
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid path")
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="Backup not found")
+    return FileResponse(
+        path=str(target),
+        filename=filename,
+        media_type="application/gzip",
+    )

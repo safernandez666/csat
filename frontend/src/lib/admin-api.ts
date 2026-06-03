@@ -94,7 +94,15 @@ export const adminApi = {
     ),
 
   backupCompany: (slug: string) =>
-    adminFetch<{ archive_path: string }>(`/api/admin/companies/${slug}/backup`, { method: "POST" }),
+    adminFetch<{ archive_path: string; filename: string }>(
+      `/api/admin/companies/${slug}/backup`,
+      { method: "POST" }
+    ),
+
+  // Returns a same-origin URL the browser can navigate to. Cookies (and
+  // therefore auth) are sent automatically. Use with an anchor[download]
+  // click to trigger a save dialog.
+  backupDownloadUrl: (filename: string) => `/api/admin/backups/${encodeURIComponent(filename)}`,
 
   deleteCompany: (slug: string) =>
     adminFetch<{ slug: string; ok: boolean }>(`/api/admin/companies/${slug}`, { method: "DELETE" }),
