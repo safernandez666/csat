@@ -1,17 +1,17 @@
+// i18n note: change-password copy is hard-coded in Spanish for now.
+// Promote to keys in src/lib/i18n.ts when the en/pt dictionaries are extended.
 import { useState } from "react";
 import { Eye, EyeOff, KeyRound, ShieldAlert } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { ParticlesBackground } from "../components/particles-background";
 import { api } from "../lib/api";
-import { useTranslation } from "../hooks/use-translation";
 
 interface Props {
   forced?: boolean;
 }
 
 export default function ChangePasswordPage({ forced = false }: Props) {
-  const { t } = useTranslation();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -25,15 +25,15 @@ export default function ChangePasswordPage({ forced = false }: Props) {
     e.preventDefault();
     setError("");
     if (newPassword.length < 8) {
-      setError(t("change_password.too_short") || "La nueva password debe tener al menos 8 caracteres.");
+      setError("La nueva password debe tener al menos 8 caracteres.");
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError(t("change_password.mismatch") || "Las passwords no coinciden.");
+      setError("Las passwords no coinciden.");
       return;
     }
     if (newPassword === currentPassword) {
-      setError(t("change_password.same_as_old") || "La nueva password debe ser distinta a la actual.");
+      setError("La nueva password debe ser distinta a la actual.");
       return;
     }
     setLoading(true);
@@ -46,13 +46,12 @@ export default function ChangePasswordPage({ forced = false }: Props) {
       }, 1800);
     } catch (e: any) {
       const msg = e?.message || "";
-      // Backend returns "Current password incorrect" / "New password too short"
       if (msg.toLowerCase().includes("incorrect")) {
-        setError(t("change_password.current_wrong") || "La password actual es incorrecta.");
+        setError("La password actual es incorrecta.");
       } else if (msg.toLowerCase().includes("too short")) {
-        setError(t("change_password.too_short") || "La nueva password debe tener al menos 8 caracteres.");
+        setError("La nueva password debe tener al menos 8 caracteres.");
       } else {
-        setError(msg || (t("change_password.error") || "No se pudo cambiar la password."));
+        setError(msg || "No se pudo cambiar la password.");
       }
     } finally {
       setLoading(false);
@@ -68,13 +67,11 @@ export default function ChangePasswordPage({ forced = false }: Props) {
             <KeyRound className="size-6 text-primary-foreground" />
           </div>
           <div className="text-center">
-            <h1 className="text-xl font-bold tracking-tight">
-              {t("change_password.title") || "Cambiar password"}
-            </h1>
+            <h1 className="text-xl font-bold tracking-tight">Cambiar password</h1>
             <p className="text-sm text-muted">
               {forced
-                ? (t("change_password.forced_subtitle") || "Tu password es temporal — definí una nueva para continuar.")
-                : (t("change_password.subtitle") || "Definí una nueva password para tu cuenta.")}
+                ? "Tu password es temporal — definí una nueva para continuar."
+                : "Definí una nueva password para tu cuenta."}
             </p>
           </div>
         </div>
@@ -83,22 +80,19 @@ export default function ChangePasswordPage({ forced = false }: Props) {
           <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning">
             <ShieldAlert className="mt-0.5 size-4 shrink-0" />
             <p>
-              {t("change_password.forced_notice") ||
-                "Por seguridad, tenés que cambiar la password de un solo uso antes de seguir."}
+              Por seguridad, tenés que cambiar la password de un solo uso antes de seguir.
             </p>
           </div>
         )}
 
         {success ? (
           <div className="rounded-lg border border-success/30 bg-success/10 p-4 text-sm text-success text-center">
-            {t("change_password.success") || "Password actualizada. Te redirigimos al login..."}
+            Password actualizada. Te redirigimos al login...
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-muted mb-1">
-                {t("change_password.current") || "Password actual"}
-              </label>
+              <label className="block text-xs font-medium text-muted mb-1">Password actual</label>
               <div className="relative">
                 <Input
                   type={showCurrent ? "text" : "password"}
@@ -121,9 +115,7 @@ export default function ChangePasswordPage({ forced = false }: Props) {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-muted mb-1">
-                {t("change_password.new") || "Nueva password"}
-              </label>
+              <label className="block text-xs font-medium text-muted mb-1">Nueva password</label>
               <div className="relative">
                 <Input
                   type={showNew ? "text" : "password"}
@@ -143,15 +135,11 @@ export default function ChangePasswordPage({ forced = false }: Props) {
                   {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              <p className="mt-1 text-[10px] text-muted">
-                {t("change_password.hint") || "Mínimo 8 caracteres."}
-              </p>
+              <p className="mt-1 text-[10px] text-muted">Mínimo 8 caracteres.</p>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-muted mb-1">
-                {t("change_password.confirm") || "Confirmar nueva password"}
-              </label>
+              <label className="block text-xs font-medium text-muted mb-1">Confirmar nueva password</label>
               <Input
                 type={showNew ? "text" : "password"}
                 value={confirmPassword}
@@ -165,9 +153,7 @@ export default function ChangePasswordPage({ forced = false }: Props) {
             {error && <p className="text-xs text-danger">{error}</p>}
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading
-                ? (t("change_password.submitting") || "Cambiando...")
-                : (t("change_password.submit") || "Cambiar password")}
+              {loading ? "Cambiando..." : "Cambiar password"}
             </Button>
 
             {!forced && (
@@ -178,7 +164,7 @@ export default function ChangePasswordPage({ forced = false }: Props) {
                 onClick={() => (window.location.href = "/")}
                 disabled={loading}
               >
-                {t("change_password.cancel") || "Cancelar"}
+                Cancelar
               </Button>
             )}
           </form>
