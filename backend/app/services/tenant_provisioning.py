@@ -16,7 +16,7 @@ from app.core.engine_pool import get_pool
 from app.core.tenant import validate_slug
 from app.db.control_session import get_control_engine
 from app.db.session import init_tenant_db
-from app.models.control_plane import Company
+from app.models.control_plane import Company, TenantAuditLog
 from app.models.user import User, Role
 from app.utils.seed import seed_database
 from app.core.security import hash_password
@@ -159,6 +159,48 @@ class _DuckCompany:
     def __init__(self, slug: str, db_path: str):
         self.slug = slug
         self.db_path = db_path
+
+
+def delete_tenant(slug: str, super_user_id: Optional[int]) -> dict:
+    """Permanently remove a tenant: DB file, uploads dir, control row.
+
+    Irreversible. Audit log entries that referenced this company are
+    preserved with company_id nulled so the history survives the delete.
+    Engine pool entry is evicted before files are removed to avoid
+    Windows-style "file in use" surprises on the SQLite handle.
+    """
+    with Session(get_control_engine()) as cs:
+        c = cs.query(Company).filter_by(slug=slug).first()
+        if not c:
+            raise LookupError(slug)
+        company_id = c.id
+        db_path = c.db_path
+
+    uploads_path = _tenant_uploads_dir(slug)
+
+    get_pool().evict(slug)
+
+    if db_path and os.path.exists(db_path):
+        try:
+            os.remove(db_path)
+        except OSError:
+            pass
+    if os.path.isdir(uploads_path):
+        try:
+            shutil.rmtree(uploads_path, ignore_errors=True)
+        except OSError:
+            pass
+
+    with Session(get_control_engine()) as cs:
+        # Preserve audit history by nulling the FK before deleting the company.
+        cs.query(TenantAuditLog).filter_by(company_id=company_id).update({"company_id": None})
+        c = cs.query(Company).filter_by(id=company_id).first()
+        if c is not None:
+            cs.delete(c)
+        cs.commit()
+
+    log_super_action("company.delete", super_user_id, None, {"slug": slug, "db_path": db_path})
+    return {"slug": slug, "company_id": company_id}
 
 
 def snapshot_tenant(slug: str, backups_dir: str = "./backups") -> dict:

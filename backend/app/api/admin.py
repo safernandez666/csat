@@ -21,7 +21,7 @@ from app.db.control_session import get_control_db
 from app.models.control_plane import Company, SuperUser
 from app.services.tenant_provisioning import (
     create_tenant, suspend_tenant, activate_tenant, reset_tenant_admin_password,
-    snapshot_tenant,
+    snapshot_tenant, delete_tenant,
 )
 from app.services.tenant_audit import log_super_action
 
@@ -175,6 +175,24 @@ def admin_reset(slug: str,
     except LookupError:
         raise HTTPException(status_code=404, detail="Not found")
     return AdminResetResponse(admin_email=result["admin_email"], temp_password=result["temp_password"])
+
+
+class DeleteResponse(BaseModel):
+    slug: str
+    ok: bool = True
+
+
+@router.delete("/companies/{slug}", response_model=DeleteResponse)
+def delete_company(slug: str,
+                   current: SuperUser = Depends(require_superadmin)):
+    """Permanently delete a tenant. Irreversible — drops DB file, uploads, and
+    the control-plane row. Audit history is preserved (company_id nulled).
+    """
+    try:
+        delete_tenant(slug, super_user_id=current.id)
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Not found")
+    return DeleteResponse(slug=slug)
 
 
 class BackupResponse(BaseModel):
