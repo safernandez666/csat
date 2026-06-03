@@ -28,8 +28,20 @@ class SettingUpdate(BaseModel):
 
 @router.get("")
 def get_settings(db: Session = Depends(get_db)):
+    """All tenant settings for the authenticated user.
+
+    `company_logo_url` is rewritten to the public /api/branding/logo path
+    (same rewrite as `/public`). The raw value points at /uploads/<file>
+    which the authenticated upload handler scopes to the tenant subdir —
+    but logo files are stored at the root upload dir (not under <slug>/),
+    so the direct /uploads/ URL would 404. /api/branding/logo reads from
+    the root and is the only correct way to fetch the logo from the UI.
+    """
     items = db.query(Setting).all()
-    return {s.key: s.value for s in items}
+    result: dict = {s.key: s.value for s in items}
+    if result.get("company_logo_url"):
+        result["company_logo_url"] = "/api/branding/logo"
+    return result
 
 
 @router.get("/public")
