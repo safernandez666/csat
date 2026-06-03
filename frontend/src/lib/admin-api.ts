@@ -39,6 +39,9 @@ async function adminFetch<T>(url: string, options?: RequestInit): Promise<T> {
   });
 
   if (res.status === 401) {
+    // Notify the SPA root so it can reset to the login screen instead of
+    // surfacing a generic "Unauthorized" alert from each call site.
+    window.dispatchEvent(new Event("admin-unauthorized"));
     throw new AdminUnauthorizedError();
   }
 

@@ -4,8 +4,14 @@ All endpoints are scoped to the admin plane via `require_superadmin`. The
 login endpoint is the one exception: it accepts any request that reaches it
 (the middleware will only route admin-plane hosts here in practice).
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
+
+# Super-admin sessions live longer than tenant sessions because there is no
+# refresh-token flow on the admin plane (deliberately — Task 11). 2h matches
+# a working block of admin work without re-login. Bump if your ops day is
+# longer; lower if your threat model wants shorter exposure.
+SUPER_TOKEN_TTL = timedelta(hours=2)
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, EmailStr, Field
@@ -56,8 +62,12 @@ def super_login(req: SuperLoginRequest, response: Response, request: Request,
     if not su or not verify_password(req.password, su.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     payload = {"sub": str(su.id), "tenant": TENANT_ADMIN, "is_super": True}
-    access = create_access_token(payload)
-    response.set_cookie("access_token", access, httponly=True, secure=_config.settings.cookie_secure, samesite="lax", max_age=_config.settings.access_token_expire_minutes * 60)
+    access = create_access_token(payload, expires_delta=SUPER_TOKEN_TTL)
+    response.set_cookie(
+        "access_token", access,
+        httponly=True, secure=_config.settings.cookie_secure, samesite="lax",
+        max_age=int(SUPER_TOKEN_TTL.total_seconds()),
+    )
     return SuperTokenResponse(access_token=access)
 
 

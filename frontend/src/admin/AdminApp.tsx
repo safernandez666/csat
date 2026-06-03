@@ -44,6 +44,19 @@ export function AdminApp() {
     checkAuth();
   }, []);
 
+  // When ANY admin API call returns 401 (most commonly: access token
+  // expired — the 15-min cookie has no refresh flow for super-admin),
+  // reset to the login screen automatically. Without this the user
+  // sees a generic "Unauthorized" alert on each subsequent action.
+  useEffect(() => {
+    const onUnauth = () => {
+      setAuthState("unauthenticated");
+      setAdminEmail("");
+    };
+    window.addEventListener("admin-unauthorized", onUnauth);
+    return () => window.removeEventListener("admin-unauthorized", onUnauth);
+  }, []);
+
   if (authState === "loading") {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
