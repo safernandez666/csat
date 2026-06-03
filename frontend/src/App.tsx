@@ -18,6 +18,7 @@ import AssistantPage from "./pages/assistant";
 import QuickWinsPage from "./pages/quick-wins";
 import ImplementationWavesPage from "./pages/implementation-waves";
 import ExportReportPage from "./pages/export-report";
+import { AdminApp } from "./admin/AdminApp";
 
 export function useParams() {
   const path = window.location.pathname;
@@ -26,6 +27,12 @@ export function useParams() {
 }
 
 function App() {
+  // Admin plane detection — must be the very first check so admin.<domain> never
+  // attempts to boot the tenant auth flow.
+  if (window.location.hostname.startsWith("admin.")) {
+    return <AdminApp />;
+  }
+
   const [path, setPath] = useState(window.location.pathname);
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
