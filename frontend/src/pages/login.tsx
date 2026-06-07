@@ -34,16 +34,16 @@ const BULLET_DOT: React.CSSProperties = {
   boxShadow: "0 0 18px rgba(182,255,59,0.55)",
 };
 
-// Brand pillars for the storytelling column. Copy intentionally avoids
-// overstating coverage (no "exploit", no "guaranteed compliance") —
-// keeps the security tone conservative.
-const VALUE_BULLETS = [
-  "18 CIS Controls v8 mapped to safeguards",
-  "Implementation Group weighting (IG1 / IG2 / IG3)",
-  "Evidence attachments and review schedules",
-  "Role-based access for analysts and auditors",
-  "AI-assisted Quick Wins prioritization",
-];
+// Brand pillars for the storytelling column live in i18n under
+// login.brand.bullet_{1..5}. The five-key shape is intentional —
+// translators can rewrite each line without parsing arrays.
+const BULLET_KEYS = [
+  "login.brand.bullet_1",
+  "login.brand.bullet_2",
+  "login.brand.bullet_3",
+  "login.brand.bullet_4",
+  "login.brand.bullet_5",
+] as const;
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -116,36 +116,34 @@ export default function LoginPage() {
 
             <div className="space-y-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
-                CIS Controls v8 Compliance
+                {t("login.brand.kicker")}
               </p>
               <h2 className="text-[38px] font-extrabold leading-[1.05] tracking-[-0.04em] text-foreground md:text-[42px]">
-                Posture-grade evidence for every safeguard.
+                {t("login.brand.headline")}
               </h2>
               <p className="text-base font-semibold text-primary">
-                Continuous tracking, prioritization and executive reporting.
+                {t("login.brand.subhead")}
               </p>
               <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
-                Track the 18 CIS Controls and their safeguards against your real
-                implementation. Assign owners, attach evidence and surface what
-                needs action — without spreadsheets or guesswork.
+                {t("login.brand.copy")}
               </p>
             </div>
 
             <ul className="space-y-3 pt-2">
-              {VALUE_BULLETS.map((b) => (
-                <li key={b} className="flex items-start gap-3 text-sm text-muted">
+              {BULLET_KEYS.map((k) => (
+                <li key={k} className="flex items-start gap-3 text-sm text-muted">
                   <span
                     className="mt-[7px] inline-block size-2 shrink-0 rounded-full"
                     style={BULLET_DOT}
                   />
-                  <span>{b}</span>
+                  <span>{t(k)}</span>
                 </li>
               ))}
             </ul>
           </div>
 
           <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Authorized access only
+            {t("login.brand.footer")}
           </p>
         </aside>
 
@@ -169,7 +167,7 @@ export default function LoginPage() {
 
           <div className="space-y-1">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Secure access
+              {t("login.secure_access")}
             </p>
             <h1 className="text-xl font-bold tracking-tight text-foreground">
               {t("login.subtitle")}
