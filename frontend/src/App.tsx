@@ -46,15 +46,10 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Theme init
-    const saved = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const isDark = saved ? saved === "dark" : prefersDark;
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    // Dark-only theme (External ASM palette). Toggle remains in the UI
+    // but its setter is a no-op, so always force the .dark class on mount
+    // regardless of whatever might be in localStorage from older sessions.
+    document.documentElement.classList.add("dark");
     // Language init (applies on login page too, before AppSettingsProvider mounts)
     document.documentElement.lang = getStoredLanguage();
 

@@ -34,17 +34,11 @@ export function NavSidebar() {
       .catch(() => {});
   }, []);
 
+  // Dark-only (External ASM palette). Toggle stays in the UI as a
+  // placeholder but is a no-op — re-enable by restoring the previous
+  // body when a light palette ships.
   const toggleTheme = () => {
-    const next = !dark;
-    setDark(next);
-    const root = document.documentElement;
-    if (next) {
-      root.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      root.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
+    document.documentElement.classList.add("dark");
   };
 
   const navItem = (href: string, icon: React.ReactNode, label: string) => {

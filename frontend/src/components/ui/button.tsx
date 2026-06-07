@@ -7,7 +7,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 rounded-md",
+          "bg-gradient-to-br from-primary to-primary-2 text-primary-foreground font-extrabold shadow-[0_8px_24px_rgba(132,204,22,0.2)] hover:brightness-110 rounded-[10px]",
         success:
           "bg-success text-success-foreground shadow-sm hover:bg-success/90 rounded-md",
         outline:

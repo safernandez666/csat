@@ -18,10 +18,10 @@ export function Layout({ children, title, subtitle }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-background text-foreground antialiased transition-colors">
-      <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur">
+      <header className="sticky top-0 z-50 border-b border-border border-l-4 border-l-primary bg-[linear-gradient(135deg,#050505,#10120d_58%,#1f2a12)] backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-4">
-            <div className="flex size-10 items-center justify-center overflow-hidden rounded-xl bg-primary shadow-md">
+            <div className="flex size-10 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-primary to-primary-2 shadow-md">
               {settings.company_logo_url ? (
                 <img
                   src={settings.company_logo_url}
