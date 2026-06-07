@@ -46,7 +46,12 @@ const BULLET_KEYS = [
 ] as const;
 
 export default function LoginPage() {
-  const { t } = useTranslation();
+  // Login is always English regardless of the user's stored preference —
+  // the page renders before they're authenticated so we don't want a
+  // returning Spanish-speaking user to see the storefront in their lang
+  // before they've identified themselves. Their preference re-applies
+  // post-login.
+  const { t } = useTranslation("en");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);

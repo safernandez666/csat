@@ -28,8 +28,11 @@ function getServerSnapshot(): Language {
   return "en";
 }
 
-export function useTranslation() {
-  const lang = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+export function useTranslation(forceLang?: Language) {
+  const stored = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  // forceLang lets a single page pin a language (e.g. the login forces 'en'
+  // regardless of stored preference) without mutating the user's choice.
+  const lang = forceLang ?? stored;
 
   const t = useCallback(
     (key: string, params?: Record<string, string | number>) => translate(lang, key, params),
