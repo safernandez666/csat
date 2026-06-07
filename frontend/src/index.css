@@ -3,22 +3,26 @@
 @variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* Light mode — clean, high-contrast */
-  --color-background: #ffffff;
-  --color-foreground: #09090b;
+  /* Light mode — same External ASM aesthetic, lima accent darkened for
+     legibility on white. Primary CTA keeps the brand-bright lima gradient
+     since it's a hero element; text-accent / focus rings use the darker
+     #65a30d so they read against white card backgrounds. */
+  --color-background: #fafaf7;
+  --color-foreground: #0a0a0a;
   --color-card: #ffffff;
-  --color-card-foreground: #09090b;
+  --color-card-foreground: #0a0a0a;
   --color-border: #e4e4e7;
-  --color-muted: #71717a;
-  --color-muted-foreground: #52525b;
-  --color-accent: #18181b;
+  --color-muted: #6b7280;
+  --color-muted-foreground: #4b5563;
+  --color-accent: #65a30d;
   --color-accent-foreground: #ffffff;
-  --color-ring: #18181b;
+  --color-ring: #65a30d;
   --color-input: #e4e4e7;
 
-  /* Trust & Authority — primary CTA (navy slate) */
-  --color-primary: #0f172a;
-  --color-primary-foreground: #ffffff;
+  /* Primary CTA — brand-bright lime gradient survives on white */
+  --color-primary: #b6ff3b;
+  --color-primary-2: #84cc16;
+  --color-primary-foreground: #11120f;
 
   /* Semantic — light mode (darker for contrast on white) */
   --color-success: #16a34a;
@@ -45,11 +49,11 @@
 
   --color-orange: #ea580c;
 
-  /* Chart palette */
-  --color-chart-1: #16a34a;
-  --color-chart-2: #2563eb;
+  /* Chart palette — light variant: lime-dominant tuned darker for white */
+  --color-chart-1: #84cc16;
+  --color-chart-2: #16a34a;
   --color-chart-3: #d97706;
-  --color-chart-4: #9333ea;
+  --color-chart-4: #ea580c;
   --color-chart-5: #dc2626;
 
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;

@@ -6,6 +6,7 @@ import {
   Users,
   ClipboardList,
   Settings,
+  Moon,
   Sun,
   LogOut,
   User,
@@ -19,6 +20,10 @@ import { useTranslation } from "../hooks/use-translation";
 
 export function NavSidebar() {
   const { t } = useTranslation();
+  const [dark, setDark] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return document.documentElement.classList.contains("dark");
+  });
   const [currentUser, setCurrentUser] = useState("user");
   const path = window.location.pathname;
 
@@ -29,11 +34,17 @@ export function NavSidebar() {
       .catch(() => {});
   }, []);
 
-  // Dark-only (External ASM palette). Toggle stays in the UI as a
-  // placeholder but is a no-op — re-enable by restoring the previous
-  // body when a light palette ships.
   const toggleTheme = () => {
-    document.documentElement.classList.add("dark");
+    const next = !dark;
+    setDark(next);
+    const root = document.documentElement;
+    if (next) {
+      root.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      root.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
   };
 
   const navItem = (href: string, icon: React.ReactNode, label: string) => {
@@ -77,7 +88,7 @@ export function NavSidebar() {
           className="group relative flex h-10 w-10 items-center justify-center rounded-xl transition-colors hover:bg-card focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
           aria-label={t("nav.toggle_theme")}
         >
-          <Sun className="h-5 w-5 text-warning" />
+          {dark ? <Sun className="h-5 w-5 text-warning" /> : <Moon className="h-5 w-5 text-info" />}
           <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-medium opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
             {t("nav.toggle_theme")}
           </span>
