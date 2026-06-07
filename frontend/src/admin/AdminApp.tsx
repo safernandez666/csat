@@ -13,16 +13,10 @@ export function AdminApp() {
   const [adminEmail, setAdminEmail] = useState("");
   const [currentPage, setCurrentPage] = useState("companies");
 
-  // Theme init — mirror what App.tsx does so the admin plane uses the same setting
+  // Dark-only (External ASM palette). Same forcing as tenant App.tsx —
+  // any leftover "theme: light" from older sessions is ignored.
   useEffect(() => {
-    const saved = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const isDark = saved ? saved === "dark" : prefersDark;
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    document.documentElement.classList.add("dark");
   }, []);
 
   const checkAuth = async () => {
