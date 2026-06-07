@@ -69,8 +69,11 @@ export default function AdminLoginPage({ onLoginSuccess }: AdminLoginPageProps) 
   };
 
   return (
+    // Force dark scope on the login regardless of the user's theme toggle —
+    // the inline gradient backgrounds are hardcoded dark, so semantic text
+    // tokens (text-foreground etc) must resolve to the dark palette here.
     <div
-      className="relative flex min-h-screen items-center justify-center px-4 py-10"
+      className="dark relative flex min-h-screen items-center justify-center px-4 py-10"
       style={PAGE_BG}
     >
       <div
