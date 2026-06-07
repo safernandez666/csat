@@ -73,3 +73,7 @@ htmlcov/
 /tmp/
 *.pid
 .deepsec/
+
+# Local-only ops scripts (credentials reset, ad-hoc maintenance).
+# Anything dropped here stays out of git by design.
+scripts/local/
