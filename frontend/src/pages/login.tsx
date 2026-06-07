@@ -90,7 +90,7 @@ export default function LoginPage() {
     // hardcoded dark, so semantic text tokens (text-foreground etc) must
     // resolve to the dark palette here.
     <div
-      className="dark relative flex min-h-screen items-center justify-center px-4 py-10"
+      className="dark text-foreground relative flex min-h-screen items-center justify-center px-4 py-10"
       style={PAGE_BG}
     >
       <div

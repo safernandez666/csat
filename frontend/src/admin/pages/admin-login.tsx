@@ -29,14 +29,14 @@ const BULLET_DOT: React.CSSProperties = {
   boxShadow: "0 0 18px rgba(182,255,59,0.55)",
 };
 
-// Admin SPA is operator-facing and Spanish-only by design — no i18n
-// wrapper here, copy stays inline.
+// Admin SPA is operator-facing and not localized — copy stays inline
+// in English to match the rest of the platform's login experience.
 const VALUE_BULLETS = [
-  "Alta y baja de empresas con subdominio dedicado",
-  "Suspensión y reactivación de tenants",
-  "Backups bajo demanda con descarga directa",
-  "Branding y configuración por cliente",
-  "Operaciones aisladas en bases por tenant",
+  "Onboard and offboard companies with dedicated subdomains",
+  "Suspend and reactivate tenants",
+  "On-demand backups with direct download",
+  "Per-tenant branding and configuration",
+  "Isolated operations across per-tenant databases",
 ];
 
 interface AdminLoginPageProps {
@@ -59,9 +59,9 @@ export default function AdminLoginPage({ onLoginSuccess }: AdminLoginPageProps) 
       onLoginSuccess();
     } catch (err: any) {
       if (err instanceof AdminUnauthorizedError) {
-        setError("Credenciales incorrectas");
+        setError("Invalid credentials");
       } else {
-        setError(err.message || "Error al iniciar sesión");
+        setError(err.message || "Sign-in error");
       }
     } finally {
       setLoading(false);
@@ -73,7 +73,7 @@ export default function AdminLoginPage({ onLoginSuccess }: AdminLoginPageProps) 
     // the inline gradient backgrounds are hardcoded dark, so semantic text
     // tokens (text-foreground etc) must resolve to the dark palette here.
     <div
-      className="dark relative flex min-h-screen items-center justify-center px-4 py-10"
+      className="dark text-foreground relative flex min-h-screen items-center justify-center px-4 py-10"
       style={PAGE_BG}
     >
       <div
@@ -100,18 +100,18 @@ export default function AdminLoginPage({ onLoginSuccess }: AdminLoginPageProps) 
 
             <div className="space-y-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
-                Plano de Administración
+                Administration Plane
               </p>
               <h2 className="text-[38px] font-extrabold leading-[1.05] tracking-[-0.04em] text-foreground md:text-[42px]">
-                Gestión central de clientes ZebraSecurity.
+                Central client management for ZebraSecurity.
               </h2>
               <p className="text-base font-semibold text-primary">
-                Alta, suspensión y backups de tenants en un solo lugar.
+                Onboarding, suspension and backups of tenants in one place.
               </p>
               <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
-                Consola para operadores. Cada empresa tiene su propio subdominio
-                y base de datos aislada — esta vista controla el ciclo de vida
-                completo: provisión, suspensión, backups y branding.
+                Operator console. Every company gets its own subdomain and
+                isolated database — this view controls the full lifecycle:
+                provisioning, suspension, backups and branding.
               </p>
             </div>
 
@@ -129,7 +129,7 @@ export default function AdminLoginPage({ onLoginSuccess }: AdminLoginPageProps) 
           </div>
 
           <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Acceso restringido a operadores
+            Operator access only
           </p>
         </aside>
 
@@ -144,10 +144,10 @@ export default function AdminLoginPage({ onLoginSuccess }: AdminLoginPageProps) 
 
           <div className="space-y-1">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Acceso seguro
+              Secure access
             </p>
             <h1 className="text-xl font-bold tracking-tight text-foreground">
-              Panel de gestión de clientes
+              Client management panel
             </h1>
           </div>
 
@@ -167,7 +167,7 @@ export default function AdminLoginPage({ onLoginSuccess }: AdminLoginPageProps) 
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                Contraseña
+                Password
               </label>
               <div className="relative">
                 <Input
@@ -189,7 +189,7 @@ export default function AdminLoginPage({ onLoginSuccess }: AdminLoginPageProps) 
             </div>
             {error && <p className="text-xs text-danger">{error}</p>}
             <Button type="submit" className="h-11 w-full" disabled={loading}>
-              {loading ? "Iniciando sesión…" : "Ingresar"}
+              {loading ? "Signing in…" : "Sign in"}
             </Button>
           </form>
         </section>
