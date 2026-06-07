@@ -4,6 +4,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { api } from "../lib/api";
 import { useTranslation } from "../hooks/use-translation";
+import { setStoredLanguage, type Language } from "../lib/i18n";
 
 // Page-wide background: radial lime glow top-left + diagonal black ramp
 const PAGE_BG = {
@@ -46,12 +47,16 @@ const BULLET_KEYS = [
 ] as const;
 
 export default function LoginPage() {
-  // Login is always English regardless of the user's stored preference —
-  // the page renders before they're authenticated so we don't want a
-  // returning Spanish-speaking user to see the storefront in their lang
-  // before they've identified themselves. Their preference re-applies
-  // post-login.
-  const { t } = useTranslation("en");
+  // Login defaults to English regardless of any stored preference, but the
+  // top-right picker can override at any time. A pick also persists to
+  // localStorage so the post-login app boots in the chosen language.
+  const [lang, setLang] = useState<Language>("en");
+  const { t } = useTranslation(lang);
+
+  const pickLanguage = (next: Language) => {
+    setLang(next);
+    setStoredLanguage(next);
+  };
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -93,6 +98,24 @@ export default function LoginPage() {
       className="dark text-foreground relative flex min-h-screen items-center justify-center px-4 py-10"
       style={PAGE_BG}
     >
+      {/* Top-right language picker: defaults to EN, click to switch. */}
+      <div className="absolute right-5 top-5 z-10 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.18em]">
+        {(["en", "es", "pt"] as const).map((code) => (
+          <button
+            key={code}
+            type="button"
+            onClick={() => pickLanguage(code)}
+            aria-pressed={lang === code}
+            className={
+              lang === code
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground transition-colors"
+            }
+          >
+            {code.toUpperCase()}
+          </button>
+        ))}
+      </div>
       <div
         className="relative grid w-full max-w-[980px] grid-cols-1 overflow-hidden md:grid-cols-[1.05fr_1fr]"
         style={{
