@@ -6,7 +6,6 @@ import {
   Users,
   ClipboardList,
   Settings,
-  Moon,
   Sun,
   LogOut,
   User,
@@ -20,10 +19,6 @@ import { useTranslation } from "../hooks/use-translation";
 
 export function NavSidebar() {
   const { t } = useTranslation();
-  const [dark, setDark] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem("theme") !== "light";
-  });
   const [currentUser, setCurrentUser] = useState("user");
   const path = window.location.pathname;
 
@@ -82,7 +77,7 @@ export function NavSidebar() {
           className="group relative flex h-10 w-10 items-center justify-center rounded-xl transition-colors hover:bg-card focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
           aria-label={t("nav.toggle_theme")}
         >
-          {dark ? <Sun className="h-5 w-5 text-warning" /> : <Moon className="h-5 w-5 text-info" />}
+          <Sun className="h-5 w-5 text-warning" />
           <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-medium opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
             {t("nav.toggle_theme")}
           </span>

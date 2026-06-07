@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Building2, LogOut, User, Moon, Sun } from "lucide-react";
+import { Building2, LogOut, User, Sun } from "lucide-react";
 import { adminApi } from "../../lib/admin-api";
 
 interface AdminSidebarProps {
@@ -9,11 +8,6 @@ interface AdminSidebarProps {
 }
 
 export function AdminSidebar({ currentPage, onNavigate, adminEmail }: AdminSidebarProps) {
-  const [dark, setDark] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem("theme") !== "light";
-  });
-
   // Dark-only (External ASM palette). Toggle stays in the UI as a
   // placeholder but is a no-op — re-enable by restoring the previous
   // body when a light palette ships.
@@ -73,7 +67,7 @@ export function AdminSidebar({ currentPage, onNavigate, adminEmail }: AdminSideb
           className="group relative flex h-10 w-10 items-center justify-center rounded-xl transition-colors hover:bg-card focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
           aria-label="Cambiar tema"
         >
-          {dark ? <Sun className="h-5 w-5 text-warning" /> : <Moon className="h-5 w-5 text-info" />}
+          <Sun className="h-5 w-5 text-warning" />
           <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-medium opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
             Cambiar tema
           </span>
