@@ -172,14 +172,14 @@ def _compute_quick_wins(controls: list) -> list:
         else:
             next_action = "Continue implementing remaining safeguards"
 
-        effort = "low" if not_impl_ig1 <= 2 and c.risk_level in ("low", "medium") else "medium" if not_impl_ig1 <= 4 else "high"
-        impact = "high" if c.risk_level in ("critical", "high") or not_impl_ig1 >= 3 else "medium" if not_impl_ig1 >= 1 else "low"
+        effort = "low" if pending_ig1 <= 2 and c.risk_level in ("low", "medium") else "medium" if pending_ig1 <= 4 else "high"
+        impact = "high" if c.risk_level in ("critical", "high") or pending_ig1 >= 3 else "medium" if pending_ig1 >= 1 else "low"
 
         candidates.append({
             "cis_id": c.cis_id, "name": c.name, "group": get_cis_group(c.cis_id),
             "risk_level": c.risk_level, "status": c.status,
             "safeguards_total": total, "safeguards_implemented": implemented,
-            "ig1_pending": not_impl_ig1, "ig2_pending": not_impl_ig2, "ig3_pending": not_impl_ig3,
+            "ig1_pending": pending_ig1, "ig2_pending": pending_ig2, "ig3_pending": pending_ig3,
             "evidence_count": evidence_count, "has_owner": bool(c.owner_id),
             "quick_win_score": quick_win_score, "objective": c.objective,
             "why": why, "next_action": next_action, "effort": effort, "impact": impact,
