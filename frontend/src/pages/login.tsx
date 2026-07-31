@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { ShieldCheck, Eye, EyeOff, Building2 } from "lucide-react";
+import { Eye, EyeOff, Building2 } from "lucide-react";
+import { ChecklistLogo } from "../components/checklist-logo";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { api } from "../lib/api";
@@ -140,7 +141,7 @@ export default function LoginPage() {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <ShieldCheck className="size-5 text-primary-foreground" />
+                  <ChecklistLogo className="size-5 text-primary-foreground" />
                 )}
               </div>
               <span className="font-extrabold tracking-tight">{platformName}</span>
@@ -191,7 +192,7 @@ export default function LoginPage() {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <ShieldCheck className="size-5 text-primary-foreground" />
+                <ChecklistLogo className="size-5 text-primary-foreground" />
               )}
             </div>
             <span className="font-extrabold tracking-tight">{platformName}</span>

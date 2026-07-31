@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { ShieldCheck } from "lucide-react";
+import { ChecklistLogo } from "./checklist-logo";
 import { useAppSettings } from "../contexts/app-settings";
 
 interface LayoutProps {
@@ -29,7 +29,7 @@ export function Layout({ children, title, subtitle }: LayoutProps) {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <ShieldCheck className="size-5 text-primary-foreground" />
+                <ChecklistLogo className="size-5 text-primary-foreground" />
               )}
             </div>
             <div>

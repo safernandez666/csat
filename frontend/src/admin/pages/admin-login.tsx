@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ShieldCheck, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
+import { ChecklistLogo } from "../../components/checklist-logo";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { adminApi, AdminUnauthorizedError } from "../../lib/admin-api";
@@ -93,7 +94,7 @@ export default function AdminLoginPage({ onLoginSuccess }: AdminLoginPageProps) 
           <div className="space-y-6">
             <div className="flex items-center gap-3">
               <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-2 shadow-md">
-                <ShieldCheck className="size-5 text-primary-foreground" />
+                <ChecklistLogo className="size-5 text-primary-foreground" />
               </div>
               <span className="font-extrabold tracking-tight">CSAT Super-Admin</span>
             </div>
@@ -137,7 +138,7 @@ export default function AdminLoginPage({ onLoginSuccess }: AdminLoginPageProps) 
         <section className="flex flex-col justify-center p-8 md:p-[42px]" style={RIGHT_BG}>
           <div className="mb-6 flex items-center gap-3 md:hidden">
             <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-2 shadow-md">
-              <ShieldCheck className="size-5 text-primary-foreground" />
+              <ChecklistLogo className="size-5 text-primary-foreground" />
             </div>
             <span className="font-extrabold tracking-tight">CSAT Super-Admin</span>
           </div>
