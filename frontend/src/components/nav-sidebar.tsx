@@ -22,7 +22,7 @@ export function NavSidebar() {
   const { t } = useTranslation();
   const [dark, setDark] = useState(() => {
     if (typeof window === "undefined") return true;
-    return localStorage.getItem("theme") !== "light";
+    return document.documentElement.classList.contains("dark");
   });
   const [currentUser, setCurrentUser] = useState("user");
   const path = window.location.pathname;

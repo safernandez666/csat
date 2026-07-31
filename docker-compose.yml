@@ -19,6 +19,10 @@ services:
     volumes:
       - csat-data:/app/data
       - csat-uploads:/app/uploads
+      # Backups generated via /api/admin/companies/{slug}/backup land in
+      # /app/backups (snapshot_tenant default). Without this volume mount
+      # they'd be wiped on every container recreate.
+      - csat-backups:/app/backups
     networks:
       - csat-network
     healthcheck:
@@ -37,6 +41,19 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+      zebra-landing:
+        condition: service_started
+    networks:
+      - csat-network
+
+  # Static one-page marketing site served at the apex (zebrasecurity.io).
+  # Internal-only — CSAT's frontend nginx reverse-proxies the apex hostname
+  # to this container, while subdomains keep serving the SaaS SPA + API.
+  # Built from the separate `zebrasecurity` repo.
+  zebra-landing:
+    image: safernandez666/zebra-landing:latest
+    container_name: zebra-landing
+    restart: unless-stopped
     networks:
       - csat-network
 
@@ -70,6 +87,7 @@ services:
 volumes:
   csat-data:
   csat-uploads:
+  csat-backups:
   csat-keycloak-data:
 
 networks:

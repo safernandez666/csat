@@ -19,16 +19,19 @@ export function statusLabel(status: string): string {
   return status.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
 }
 
+// Severities use semantic tokens (success/warning/danger/orange) so the
+// External ASM dark+lime palette repaints them automatically — no
+// hardcoded Tailwind colors here.
 export function riskColor(risk: string): string {
   switch (risk) {
     case "critical":
-      return "text-red-400 bg-red-500/10 border-red-500/20";
+      return "text-danger bg-danger-dim border-danger-border";
     case "high":
-      return "text-orange-400 bg-orange-500/10 border-orange-500/20";
+      return "text-orange bg-orange/10 border-orange/30";
     case "medium":
-      return "text-amber-400 bg-amber-500/10 border-amber-500/20";
+      return "text-warning bg-warning-dim border-warning-border";
     case "low":
-      return "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
+      return "text-success bg-success-dim border-success-border";
     default:
       return "text-muted bg-card border-border";
   }
@@ -37,13 +40,13 @@ export function riskColor(risk: string): string {
 export function statusColor(status: string): string {
   switch (status) {
     case "implemented":
-      return "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
+      return "text-success bg-success-dim border-success-border";
     case "in_progress":
-      return "text-blue-400 bg-blue-500/10 border-blue-500/20";
+      return "text-info bg-info-dim border-info-border";
     case "needs_review":
-      return "text-amber-400 bg-amber-500/10 border-amber-500/20";
+      return "text-warning bg-warning-dim border-warning-border";
     case "not_implemented":
-      return "text-red-400 bg-red-500/10 border-red-500/20";
+      return "text-danger bg-danger-dim border-danger-border";
     default:
       return "text-muted bg-card border-border";
   }

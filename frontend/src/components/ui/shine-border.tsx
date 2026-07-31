@@ -15,7 +15,7 @@ export function ShineBorder({
   borderClassName,
   borderWidth = 1,
   duration = 14,
-  shineColor = "#3b82f6",
+  shineColor = "#b6ff3b",
 }: ShineBorderProps) {
   return (
     <div

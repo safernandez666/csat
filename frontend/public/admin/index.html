@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>CSAT — Super-Admin</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M2 12c0-4.714 0-7.071 1.464-8.536C4.93 2 7.286 2 12 2s7.071 0 8.535 1.464C22 4.93 22 7.286 22 12s0 7.071-1.465 8.535C19.072 22 16.714 22 12 22s-7.071 0-8.536-1.465C2 19.072 2 16.714 2 12Z' fill='%23b6ff3b'/%3E%3Cg fill='none' stroke='%2311120f' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15.8L7.143 17L10 14M6 8.8L7.143 10L10 7'/%3E%3Cpath d='M13 9h5m-5 7h5'/%3E%3C/g%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #131c30;
+      --panel-2: #1a2440;
+      --border: #243154;
+      --muted: #8aa0c8;
+      --fg: #e9eefb;
+      --accent: #4f8bff;
+      --accent-soft: #1f335f;
+      --ok: #3ddc97;
+      --warn: #ffb547;
+      --bad: #ff5c7a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: linear-gradient(180deg, #08101e 0%, #0b1220 100%);
+      color: var(--fg);
+      min-height: 100vh;
+    }
+    .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+    header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    header h1 { font-size: 22px; font-weight: 700; margin: 0; }
+    header .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    button, .btn {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--fg);
+      cursor: pointer;
+      transition: background 120ms ease, border-color 120ms ease;
+    }
+    button:hover { border-color: var(--accent); }
+    button.primary { background: var(--accent); border-color: var(--accent); color: white; }
+    button.primary:hover { background: #3a76e6; }
+    button.danger { background: transparent; color: var(--bad); border-color: rgba(255,92,122,0.3); }
+    button.danger:hover { background: rgba(255,92,122,0.08); border-color: var(--bad); }
+    button.warn { background: transparent; color: var(--warn); border-color: rgba(255,181,71,0.3); }
+    button.warn:hover { background: rgba(255,181,71,0.08); border-color: var(--warn); }
+    input {
+      font-family: inherit;
+      font-size: 14px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--fg);
+      outline: none;
+      width: 100%;
+    }
+    input:focus { border-color: var(--accent); }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card h2 { font-size: 16px; font-weight: 600; margin: 0 0 14px 0; }
+    .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .row .actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+    td { font-size: 14px; padding: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    .status { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 12px; }
+    .status-active { background: rgba(61,220,151,0.12); color: var(--ok); }
+    .status-suspended { background: rgba(255,181,71,0.12); color: var(--warn); }
+    .status-failed { background: rgba(255,92,122,0.12); color: var(--bad); }
+    .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .row-actions button { padding: 5px 9px; font-size: 11px; }
+    .empty { text-align: center; padding: 32px; color: var(--muted); }
+    #login { max-width: 420px; margin: 80px auto; }
+    #login h1 { text-align: center; margin-bottom: 4px; font-size: 22px; }
+    #login .sub { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+    .alert { background: rgba(255,92,122,0.1); border: 1px solid rgba(255,92,122,0.3); color: var(--bad); padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; }
+    .ok { background: rgba(61,220,151,0.08); border: 1px solid rgba(61,220,151,0.3); color: var(--ok); padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; }
+    .credentials { background: var(--bg); border: 1px dashed var(--accent); border-radius: 8px; padding: 14px; margin-top: 10px; font-family: 'SF Mono', Menlo, monospace; font-size: 12px; }
+    .credentials .copy { float: right; }
+    .hidden { display: none !important; }
+    .muted { color: var(--muted); font-size: 12px; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .form-grid { display: grid; gap: 14px; }
+  </style>
+</head>
+<body>
+
+<!-- Login view -->
+<div id="login" class="container">
+  <h1>CSAT Super-Admin</h1>
+  <div class="sub">Panel para gestionar clientes (tenants)</div>
+  <div class="card">
+    <div id="login-err" class="alert hidden"></div>
+    <div class="form-grid">
+      <div>
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" placeholder="op@zebrasecurity.io" />
+      </div>
+      <div>
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" />
+      </div>
+      <button id="login-btn" class="primary" style="margin-top:8px;">Entrar</button>
+    </div>
+  </div>
+  <div class="muted" style="text-align:center;">
+    Esta UI es un stopgap mientras se desarrolla el AdminApp definitivo (Plan B).
+  </div>
+</div>
+
+<!-- Admin view -->
+<div id="admin" class="container hidden">
+  <header>
+    <div>
+      <h1>CSAT — Super-Admin</h1>
+      <div class="sub" id="who"></div>
+    </div>
+    <button id="logout">Salir</button>
+  </header>
+
+  <!-- Create tenant -->
+  <div class="card">
+    <h2>+ Nuevo cliente</h2>
+    <div id="create-err" class="alert hidden"></div>
+    <div id="create-ok" class="ok hidden"></div>
+    <div id="create-creds" class="credentials hidden"></div>
+    <div class="row">
+      <div>
+        <label for="c-slug">Slug (subdomain) <span class="muted">— a-z, 0-9, -; 2-31 chars</span></label>
+        <input id="c-slug" placeholder="acme" />
+      </div>
+      <div>
+        <label for="c-name">Nombre de la empresa</label>
+        <input id="c-name" placeholder="Acme Corp" />
+      </div>
+      <div>
+        <label for="c-email">Email del admin del tenant</label>
+        <input id="c-email" type="email" placeholder="admin@acme.example" />
+      </div>
+      <div>
+        <label for="c-fullname">Nombre del admin</label>
+        <input id="c-fullname" placeholder="Acme Admin" />
+      </div>
+      <div class="actions">
+        <button id="create-btn" class="primary">Crear cliente</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tenant list -->
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 14px;">
+      <h2 style="margin:0;">Clientes</h2>
+      <button id="refresh">↻ Refrescar</button>
+    </div>
+    <table id="tenants-tbl">
+      <thead>
+        <tr>
+          <th>Slug</th><th>Nombre</th><th>Estado</th><th>Creado</th><th>URL</th><th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tenants-body"></tbody>
+    </table>
+    <div id="tenants-empty" class="empty hidden">No hay clientes todavía. Creá uno arriba.</div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'csat_admin_token';
+const API = '';  // same-origin
+
+function getToken() { return localStorage.getItem(STORAGE_KEY); }
+function setToken(t) { localStorage.setItem(STORAGE_KEY, t); }
+function clearToken() { localStorage.removeItem(STORAGE_KEY); }
+
+async function api(path, opts = {}) {
+  const t = getToken();
+  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  if (t) headers['Authorization'] = `Bearer ${t}`;
+  const r = await fetch(API + path, { ...opts, headers });
+  if (r.status === 401) {
+    clearToken();
+    showLogin('Sesión expirada — entrá de nuevo');
+    throw new Error('unauthorized');
+  }
+  const text = await r.text();
+  const json = text ? JSON.parse(text) : null;
+  if (!r.ok) throw { status: r.status, body: json };
+  return json;
+}
+
+function $(id) { return document.getElementById(id); }
+
+function showLogin(errMsg) {
+  $('login').classList.remove('hidden');
+  $('admin').classList.add('hidden');
+  if (errMsg) {
+    $('login-err').textContent = errMsg;
+    $('login-err').classList.remove('hidden');
+  } else {
+    $('login-err').classList.add('hidden');
+  }
+}
+
+function showAdmin(email) {
+  $('login').classList.add('hidden');
+  $('admin').classList.remove('hidden');
+  $('who').textContent = `Logueado como ${email}`;
+  loadTenants();
+}
+
+async function doLogin() {
+  $('login-err').classList.add('hidden');
+  const email = $('email').value.trim();
+  const password = $('password').value;
+  if (!email || !password) {
+    $('login-err').textContent = 'Email y password requeridos';
+    $('login-err').classList.remove('hidden');
+    return;
+  }
+  try {
+    const r = await api('/api/admin/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    setToken(r.access_token);
+    showAdmin(email);
+  } catch (e) {
+    const msg = e.body?.detail || e.message || 'Login falló';
+    $('login-err').textContent = msg;
+    $('login-err').classList.remove('hidden');
+  }
+}
+
+async function loadMe() {
+  try {
+    const r = await api('/api/admin/auth/me');
+    showAdmin(r.email);
+  } catch (e) {
+    showLogin();
+  }
+}
+
+async function loadTenants() {
+  try {
+    const rows = await api('/api/admin/companies');
+    const body = $('tenants-body');
+    const empty = $('tenants-empty');
+    if (!rows.length) {
+      body.innerHTML = '';
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+    const host = location.hostname.replace(/^admin\./, '');
+    body.innerHTML = rows.map(t => {
+      const url = `https://${t.slug}.${host}`;
+      const statusCls = t.status === 'active' ? 'status-active' : t.status === 'suspended' ? 'status-suspended' : 'status-failed';
+      const created = new Date(t.created_at).toLocaleString();
+      const toggleBtn = t.status === 'active'
+        ? `<button class="warn" onclick="act('${t.slug}','suspend')">Suspender</button>`
+        : `<button class="primary" onclick="act('${t.slug}','activate')">Activar</button>`;
+      return `<tr>
+        <td><code>${t.slug}</code></td>
+        <td>${escapeHtml(t.name)}</td>
+        <td><span class="status ${statusCls}">${t.status}</span></td>
+        <td><span class="muted">${created}</span></td>
+        <td><a href="${url}" target="_blank" rel="noopener">${url} ↗</a></td>
+        <td><div class="row-actions">
+          ${toggleBtn}
+          <button onclick="act('${t.slug}','admin-reset')">Reset pwd</button>
+          <button onclick="backup('${t.slug}')">Backup</button>
+        </div></td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    console.error('loadTenants', e);
+  }
+}
+
+async function createTenant() {
+  $('create-err').classList.add('hidden');
+  $('create-ok').classList.add('hidden');
+  $('create-creds').classList.add('hidden');
+  const slug = $('c-slug').value.trim().toLowerCase();
+  const name = $('c-name').value.trim();
+  const admin_email = $('c-email').value.trim();
+  const admin_full_name = $('c-fullname').value.trim();
+  if (!slug || !name || !admin_email || !admin_full_name) {
+    $('create-err').textContent = 'Todos los campos son obligatorios';
+    $('create-err').classList.remove('hidden');
+    return;
+  }
+  try {
+    const r = await api('/api/admin/companies', {
+      method: 'POST',
+      body: JSON.stringify({ slug, name, admin_email, admin_full_name }),
+    });
+    $('create-ok').textContent = `Cliente "${r.slug}" creado.`;
+    $('create-ok').classList.remove('hidden');
+    const host = location.hostname.replace(/^admin\./, '');
+    const tenantUrl = `https://${r.slug}.${host}`;
+    $('create-creds').innerHTML = `
+      <button class="copy" onclick="copyCreds(this)">Copiar todo</button>
+      <strong>URL del cliente:</strong> <a href="${tenantUrl}" target="_blank">${tenantUrl}</a><br/>
+      <strong>Email:</strong> ${r.admin_email}<br/>
+      <strong>Password (one-time):</strong> ${r.temp_password}<br/>
+      <em style="color: var(--muted)">El cliente debe cambiar el password en su primer login.</em>
+    `;
+    $('create-creds').classList.remove('hidden');
+    $('c-slug').value = $('c-name').value = $('c-email').value = $('c-fullname').value = '';
+    loadTenants();
+  } catch (e) {
+    const msg = e.body?.detail || e.message || 'Error creando cliente';
+    $('create-err').textContent = `${msg}`;
+    $('create-err').classList.remove('hidden');
+  }
+}
+
+async function act(slug, action) {
+  const labels = { suspend: 'Suspender', activate: 'Activar', 'admin-reset': 'Resetear password del admin' };
+  if (!confirm(`${labels[action]} "${slug}"?`)) return;
+  try {
+    const r = await api(`/api/admin/companies/${slug}/${action}`, { method: 'POST' });
+    if (action === 'admin-reset') {
+      alert(`Nuevo password del admin de "${slug}":\n\n${r.temp_password}\n\nGuardalo, no se muestra de nuevo.`);
+    }
+    loadTenants();
+  } catch (e) {
+    alert(`Error: ${e.body?.detail || e.message}`);
+  }
+}
+
+async function backup(slug) {
+  if (!confirm(`Crear backup de "${slug}"?\n\n(Recomendado: suspendelo primero para una snapshot crash-consistent)`)) return;
+  try {
+    const r = await api(`/api/admin/companies/${slug}/backup`, { method: 'POST' });
+    alert(`Backup creado:\n${r.archive_path}\n\n(En el server, accesible vía SSH/volumen)`);
+  } catch (e) {
+    alert(`Error: ${e.body?.detail || e.message}`);
+  }
+}
+
+function copyCreds(btn) {
+  const text = btn.parentElement.innerText.replace(/^Copiar todo\n/, '');
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ Copiado';
+    setTimeout(() => btn.textContent = 'Copiar todo', 1500);
+  });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Wire events
+$('login-btn').onclick = doLogin;
+$('password').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+$('email').addEventListener('keydown', e => { if (e.key === 'Enter') $('password').focus(); });
+$('create-btn').onclick = createTenant;
+$('refresh').onclick = loadTenants;
+$('logout').onclick = () => { clearToken(); showLogin(); };
+
+// Boot
+if (getToken()) loadMe(); else showLogin();
+</script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Zebra Security</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #07090f;
+      --fg: #f4f5f8;
+      --muted: #7c8593;
+      --accent: #4f8bff;
+      --stripe: rgba(255, 255, 255, 0.04);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      padding: 1.5rem;
+    }
+
+    /* Subtle zebra stripes — nod to the brand without screaming about it.
+       Radial mask fades the pattern toward the center so it stays atmospheric. */
+    body::before {
+      content: '';
+      position: absolute;
+      inset: -10%;
+      background-image: repeating-linear-gradient(
+        180deg,
+        transparent 0,
+        transparent 64px,
+        var(--stripe) 64px,
+        var(--stripe) 66px
+      );
+      mask-image: radial-gradient(ellipse 80% 70% at 50% 45%, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0) 80%);
+      -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 45%, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0) 80%);
+      pointer-events: none;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      max-width: 520px;
+    }
+
+    h1 {
+      font-size: clamp(2.5rem, 8vw, 4.25rem);
+      font-weight: 900;
+      letter-spacing: -0.035em;
+      line-height: 1;
+      margin: 0;
+    }
+    h1 .accent { color: var(--accent); }
+
+    .tagline {
+      margin: 1.75rem 0 0;
+      font-size: 0.8125rem;
+      font-weight: 400;
+      color: var(--muted);
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+    }
+
+    .divider {
+      width: 56px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--muted), transparent);
+      margin: 3rem auto 0;
+      opacity: 0.5;
+    }
+
+    .status {
+      margin-top: 2rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.45rem 1.05rem;
+      border: 1px solid rgba(79, 139, 255, 0.25);
+      border-radius: 999px;
+      background: rgba(79, 139, 255, 0.04);
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--accent);
+    }
+    .status .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 0 rgba(79, 139, 255, 0.5);
+      animation: pulse 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(79, 139, 255, 0.5);
+        opacity: 1;
+      }
+      50% {
+        box-shadow: 0 0 0 8px rgba(79, 139, 255, 0);
+        opacity: 0.85;
+      }
+    }
+
+    footer {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      z-index: 1;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .status .dot { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1><span class="accent">Z</span>ebra Security</h1>
+    <p class="tagline">Soluciones de ciberseguridad</p>
+    <div class="divider"></div>
+    <div class="status"><span class="dot"></span>Sitio en construcción</div>
+  </div>
+  <footer>© 2026 Zebra Security</footer>
+</body>
+</html>

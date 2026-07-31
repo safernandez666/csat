@@ -64,6 +64,12 @@ export const api = {
 
   me: () => fetchJson<User>("/api/auth/me"),
 
+  changePassword: (currentPassword: string, newPassword: string) =>
+    fetchJson<{ ok: boolean }>("/api/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    }),
+
   getControls: (params?: Record<string, string>) => {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
     return fetchJson<Control[]>(`/api/controls${qs}`);

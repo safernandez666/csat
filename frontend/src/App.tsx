@@ -6,6 +6,8 @@ import { getStoredLanguage, setStoredLanguage, type Language } from "./lib/i18n"
 import { Spinner } from "./components/ui/spinner";
 import { Toaster } from "./components/ui/toaster";
 import LoginPage from "./pages/login";
+import ChangePasswordPage from "./pages/change-password";
+import TenantNotFoundPage from "./pages/tenant-not-found";
 import DashboardPage from "./pages/dashboard";
 import ControlsPage from "./pages/controls";
 import ControlDetailPage from "./pages/control-detail";
@@ -17,6 +19,7 @@ import AssistantPage from "./pages/assistant";
 import QuickWinsPage from "./pages/quick-wins";
 import ImplementationWavesPage from "./pages/implementation-waves";
 import ExportReportPage from "./pages/export-report";
+import { AdminApp } from "./admin/AdminApp";
 
 export function useParams() {
   const path = window.location.pathname;
@@ -25,8 +28,16 @@ export function useParams() {
 }
 
 function App() {
+  // Admin plane detection — must be the very first check so admin.<domain> never
+  // attempts to boot the tenant auth flow.
+  if (window.location.hostname.startsWith("admin.")) {
+    return <AdminApp />;
+  }
+
   const [path, setPath] = useState(window.location.pathname);
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [tenantStatus, setTenantStatus] = useState<"ok" | "missing" | "suspended">("ok");
 
   useEffect(() => {
     const onPop = () => setPath(window.location.pathname);
@@ -35,7 +46,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Theme init
+    // Theme init — honor stored preference, fall back to OS preference.
     const saved = localStorage.getItem("theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const isDark = saved ? saved === "dark" : prefersDark;
@@ -48,9 +59,29 @@ function App() {
     document.documentElement.lang = getStoredLanguage();
 
     fetch("/api/auth/me", { credentials: "include" })
-      .then((r) => {
+      .then(async (r) => {
+        // 404 means the TenantMiddleware rejected the request before it
+        // reached the route. The body's `detail` distinguishes the cause:
+        //   "Not found" → tenant doesn't exist
+        //   "Suspended" → tenant exists but is not active
+        if (r.status === 404) {
+          try {
+            const body = await r.json();
+            setTenantStatus(body?.detail === "Suspended" ? "suspended" : "missing");
+          } catch {
+            setTenantStatus("missing");
+          }
+          setAuthenticated(false);
+          return;
+        }
         setAuthenticated(r.ok);
         if (r.ok) {
+          try {
+            const me = await r.json();
+            setMustChangePassword(Boolean(me?.must_change_password));
+          } catch {
+            // ignore JSON parse errors — flag stays false
+          }
           // Best-effort: sync the stored language from the server on the very first
           // render so deep links like /controls or /waves don't render in the
           // wrong language while AppSettingsProvider is still booting.
@@ -77,8 +108,23 @@ function App() {
     );
   }
 
+  if (tenantStatus !== "ok") {
+    return <TenantNotFoundPage mode={tenantStatus} />;
+  }
+
   if (!authenticated || path === "/login") { // ship-safe-ignore: frontend route check, rate-limit is backend
     return <LoginPage />;
+  }
+
+  // Forced password change (Task 14): if the server flagged the user with
+  // must_change_password (provisioned tenant admin, or post admin-reset),
+  // redirect any navigation to /change-password until they rotate.
+  if (mustChangePassword && path !== "/change-password") {
+    window.history.replaceState({}, "", "/change-password");
+    return <ChangePasswordPage forced />;
+  }
+  if (path === "/change-password") {
+    return <ChangePasswordPage forced={mustChangePassword} />;
   }
 
   let page;

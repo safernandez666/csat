@@ -1,8 +1,10 @@
+import io
 import os
 import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Request, UploadFile, File, HTTPException
+from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import Optional, Any
@@ -11,6 +13,11 @@ from app.api.deps import get_db, require_admin
 from app.core.config import settings
 from app.models.settings import Setting
 from app.services.audit_service import log_action
+
+# Server-side resize target. Logos render at small sizes in the UI; anything
+# larger is wasted bandwidth and storage. Aspect ratio is preserved.
+LOGO_MAX_DIM = 512
+LOGO_MAX_RAW_BYTES = 10 * 1024 * 1024  # 10 MB before resize
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -21,8 +28,20 @@ class SettingUpdate(BaseModel):
 
 @router.get("")
 def get_settings(db: Session = Depends(get_db)):
+    """All tenant settings for the authenticated user.
+
+    `company_logo_url` is rewritten to the public /api/branding/logo path
+    (same rewrite as `/public`). The raw value points at /uploads/<file>
+    which the authenticated upload handler scopes to the tenant subdir —
+    but logo files are stored at the root upload dir (not under <slug>/),
+    so the direct /uploads/ URL would 404. /api/branding/logo reads from
+    the root and is the only correct way to fetch the logo from the UI.
+    """
     items = db.query(Setting).all()
-    return {s.key: s.value for s in items}
+    result: dict = {s.key: s.value for s in items}
+    if result.get("company_logo_url"):
+        result["company_logo_url"] = "/api/branding/logo"
+    return result
 
 
 @router.get("/public")
@@ -65,24 +84,64 @@ def update_setting(key: str, req: SettingUpdate, request: Request, db: Session =
 
 @router.post("/logo")
 def upload_logo(file: UploadFile = File(...), db: Session = Depends(get_db), _=Depends(require_admin)):
+    """Upload a company logo. Raster images (PNG/JPEG/WebP) are auto-resized
+    server-side to a max dimension of LOGO_MAX_DIM keeping aspect ratio and
+    re-saved as optimized PNG (transparency preserved). SVG is stored as-is
+    because it scales without quality loss.
+
+    Operator UX: just drop any file under 10 MB. The server normalizes
+    dimensions, format, and filename. No manual resize required.
+    """
     allowed_types = {"image/png", "image/jpeg", "image/svg+xml", "image/webp"}
     if file.content_type not in allowed_types:
-        raise HTTPException(status_code=400, detail="Invalid file type. Only PNG, JPEG, SVG, WebP allowed.")
+        raise HTTPException(
+            status_code=400,
+            detail="Formato no soportado. Subí PNG, JPEG, WebP o SVG. (HEIC/GIF/BMP no aceptados — convertí primero.)",
+        )
 
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in {".png", ".jpg", ".jpeg", ".svg", ".webp"}:
-        raise HTTPException(status_code=400, detail="Invalid file extension")
+        raise HTTPException(status_code=400, detail="Extensión inválida")
 
-    filename = f"logo_{uuid.uuid4().hex}{ext}"
-    upload_path = os.path.join(settings.upload_dir, filename)
+    raw = file.file.read()
+    if len(raw) > LOGO_MAX_RAW_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Archivo demasiado grande ({len(raw) // 1024 // 1024} MB). Máximo {LOGO_MAX_RAW_BYTES // 1024 // 1024} MB antes del resize.",
+        )
+
     os.makedirs(settings.upload_dir, exist_ok=True)
 
+    if ext == ".svg":
+        # Vector — store verbatim, no resize.
+        out_ext = ".svg"
+        out_bytes = raw
+    else:
+        # Raster — open with Pillow, resize keeping aspect, save as PNG.
+        try:
+            img = Image.open(io.BytesIO(raw))
+            img.load()
+        except (UnidentifiedImageError, OSError) as e:
+            raise HTTPException(status_code=400, detail=f"No se pudo leer la imagen: {e}")
+        # Normalize mode for PNG output (preserve transparency where present).
+        if img.mode not in ("RGB", "RGBA"):
+            img = img.convert("RGBA")
+        # Resize only if the image is bigger than our cap.
+        if max(img.size) > LOGO_MAX_DIM:
+            img.thumbnail((LOGO_MAX_DIM, LOGO_MAX_DIM), Image.Resampling.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="PNG", optimize=True)
+        out_ext = ".png"
+        out_bytes = buf.getvalue()
+
+    filename = f"logo_{uuid.uuid4().hex}{out_ext}"
+    upload_path = os.path.join(settings.upload_dir, filename)
     with open(upload_path, "wb") as f:
-        f.write(file.file.read())
+        f.write(out_bytes)
 
     logo_url = f"/uploads/{filename}"
 
-    # Delete old logo file if exists
+    # Delete old logo file if it exists.
     old = db.query(Setting).filter(Setting.key == "company_logo_url").first()
     if old and old.value:
         old_path = os.path.join(settings.upload_dir, os.path.basename(str(old.value)))
@@ -94,4 +153,4 @@ def upload_logo(file: UploadFile = File(...), db: Session = Depends(get_db), _=D
         db.add(Setting(key="company_logo_url", value=logo_url, updated_at=datetime.now(timezone.utc)))
 
     db.commit()
-    return {"logo_url": logo_url}
+    return {"logo_url": logo_url, "size_bytes": len(out_bytes)}

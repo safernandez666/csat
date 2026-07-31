@@ -7,7 +7,7 @@ from collections import defaultdict
 from time import time
 
 from app.api.deps import get_db
-from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token, get_current_user
+from app.core.security import verify_password, hash_password, create_access_token, create_refresh_token, decode_token, get_current_user, resolve_tenant_slug
 from app.core.config import settings
 from app.models.user import User
 from app.services.audit_service import log_action
@@ -21,13 +21,13 @@ RATE_LIMIT_WINDOW = 60
 
 def rate_limit_login(request: Request):
     client_ip = request.client.host if request.client else "unknown"
+    key = f"{resolve_tenant_slug(request)}:{client_ip}"
     now = time()
-    window = [t for t in RATE_LIMIT_STORE[client_ip] if now - t < RATE_LIMIT_WINDOW]
-    RATE_LIMIT_STORE[client_ip] = window
+    window = [t for t in RATE_LIMIT_STORE[key] if now - t < RATE_LIMIT_WINDOW]
+    RATE_LIMIT_STORE[key] = window
     if len(window) >= RATE_LIMIT_MAX:
         raise HTTPException(status_code=429, detail="Too many login attempts. Please try again later.")
     window.append(now)
-
 
 
 class LoginRequest(BaseModel):
@@ -46,9 +46,15 @@ class UserProfile(BaseModel):
     email: str
     full_name: str
     roles: list
+    must_change_password: bool = False
 
     class Config:
         from_attributes = True
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
 
 
 @router.post("/login", response_model=TokenResponse)  # ship-safe-ignore NO_RATE_LIMIT_LOGIN: in-memory rate limiter applied via dependency
@@ -60,8 +66,9 @@ def login(req: LoginRequest, response: Response, request: Request, db: Session =
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account inactive")
 
-    access = create_access_token({"sub": str(user.id), "email": user.email})
-    refresh = create_refresh_token({"sub": str(user.id)})
+    token_payload = {"sub": str(user.id), "tenant": resolve_tenant_slug(request)}
+    access = create_access_token(token_payload)
+    refresh = create_refresh_token(token_payload)
 
     response.set_cookie(
         key="access_token",
@@ -92,12 +99,17 @@ def refresh_token(response: Response, request: Request, db: Session = Depends(ge
     payload = decode_token(token)
     if not payload or payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Invalid refresh token")
+    if settings.is_saas:
+        expected = resolve_tenant_slug(request)
+        if payload.get("tenant") != expected:
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
     user_id = int(payload.get("sub"))
     user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
-    access = create_access_token({"sub": str(user.id), "email": user.email})
-    refresh = create_refresh_token({"sub": str(user.id)})
+    token_payload = {"sub": str(user.id), "tenant": resolve_tenant_slug(request)}
+    access = create_access_token(token_payload)
+    refresh = create_refresh_token(token_payload)
     response.set_cookie(key="access_token", value=access, httponly=True, secure=settings.cookie_secure, samesite="lax", max_age=settings.access_token_expire_minutes * 60)  # ship-safe-ignore: httponly already True
     response.set_cookie(key="refresh_token", value=refresh, httponly=True, secure=settings.cookie_secure, samesite="lax", max_age=settings.refresh_token_expire_days * 86400)  # ship-safe-ignore: httponly already True
     return TokenResponse(access_token=access, refresh_token=refresh)
@@ -118,4 +130,26 @@ def me(current_user: User = Depends(get_current_user)):
         email=current_user.email,
         full_name=current_user.full_name,
         roles=[{"id": r.id, "name": r.name} for r in current_user.roles],
+        must_change_password=bool(current_user.must_change_password),
     )
+
+
+@router.post("/change-password")
+def change_password(req: ChangePasswordRequest,
+                    request: Request,
+                    response: Response,
+                    current_user: User = Depends(get_current_user),
+                    db: Session = Depends(get_db)):
+    user = db.merge(current_user)
+    if not user.hashed_password or not verify_password(req.current_password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password incorrect")
+    if len(req.new_password) < 8:
+        raise HTTPException(status_code=400, detail="New password too short")
+    user.hashed_password = hash_password(req.new_password)
+    user.must_change_password = False
+    db.commit()
+    log_action(db, "password_changed", "user", resource_id=str(user.id),
+               user_id=user.id, ip_address=request.client.host if request.client else None)
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+    return {"ok": True}

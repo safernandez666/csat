@@ -1,5 +1,7 @@
-from sqlalchemy.orm import DeclarativeBase
+"""Back-compat shim: existing models import `Base` from `app.db.base`.
 
+`Base` is `TenantBase` — the schema that ships in each tenant DB.
+"""
+from app.db.bases import TenantBase as Base
 
-class Base(DeclarativeBase):
-    pass
+__all__ = ["Base"]

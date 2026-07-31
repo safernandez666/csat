@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     scheduler_enabled: bool = Field(default=True, alias="SCHEDULER_ENABLED")
     cookie_secure: bool = Field(default=False, alias="COOKIE_SECURE")
 
+    # --- SaaS multi-tenant mode (Plan A) ---
+    csat_mode: str = Field(default="single", alias="CSAT_MODE")  # "single" | "saas"
+    control_db_url: str = Field(default="sqlite:///./control.db", alias="CONTROL_DB_URL")
+    tenants_dir: str = Field(default="./data/tenants", alias="TENANTS_DIR")
+    engine_pool_max_size: int = Field(default=128, alias="ENGINE_POOL_MAX_SIZE")
+    dev_tenant_slug: str = Field(default="dev", alias="DEV_TENANT_SLUG")
+
     okta_client_id: str = Field(default="", alias="OKTA_CLIENT_ID")
     okta_client_secret: str = Field(default="", alias="OKTA_CLIENT_SECRET")
     okta_issuer_url: str = Field(default="", alias="OKTA_ISSUER_URL")
@@ -38,6 +45,10 @@ class Settings(BaseSettings):
     @property
     def is_dev(self) -> bool:
         return self.env.lower() == "dev"
+
+    @property
+    def is_saas(self) -> bool:
+        return self.csat_mode.lower() == "saas"
 
     def validate_runtime(self) -> None:
         if not self.is_dev and self.secret_key in (DEFAULT_SECRET_KEY, INSECURE_DOCKER_DEFAULT, INSECURE_EXAMPLE_DEFAULT, INSECURE_BACKEND_EXAMPLE, ""):

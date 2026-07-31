@@ -15,6 +15,20 @@ from app.services.audit_service import log_action
 router = APIRouter(prefix="/api/evidence", tags=["evidence"])
 
 
+def _tenant_upload_dir(request: Request) -> str:
+    from app.core import config as _config
+    base = os.path.abspath(_config.settings.upload_dir)
+    if _config.settings.is_saas:
+        tenant = getattr(request.state, "tenant", None)
+        if not tenant:
+            raise HTTPException(status_code=404, detail="Not found")
+        path = os.path.join(base, tenant.slug)
+    else:
+        path = base
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
 class EvidenceOut(BaseModel):
     id: int
     control_id: int
@@ -78,8 +92,7 @@ def create_evidence(
         content = file.file.read()
         if len(content) > max_size:
             raise HTTPException(status_code=413, detail="File too large")
-        upload_dir = os.path.abspath(settings.upload_dir)
-        os.makedirs(upload_dir, exist_ok=True)
+        upload_dir = _tenant_upload_dir(request)
         ext = os.path.splitext(file.filename or "")[1]
         safe_name = f"{uuid.uuid4().hex}{ext}"
         file_path = os.path.join(upload_dir, safe_name)
