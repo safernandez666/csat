@@ -51,6 +51,26 @@ _DEFAULT_AI_CONFIG = {
     "model": os.getenv("AI_DEFAULT_MODEL", "llama3.2:3b"),
 }
 
+# Prefix used when the stored API key is masked before leaving the backend.
+# A submitted key that still starts with this prefix is treated as "unchanged"
+# and never overwrites the stored value (see update_ai_config / ai_health).
+_API_KEY_MASK_PREFIX = "****"
+
+
+def _mask_api_key(api_key: str | None) -> str:
+    """Return a display-safe hint for a stored API key: the mask prefix plus the
+    last 4 characters (e.g. '****1a2b'). Never returns the full secret."""
+    key = api_key or ""
+    if not key:
+        return ""
+    return f"{_API_KEY_MASK_PREFIX}{key[-4:]}" if len(key) >= 4 else _API_KEY_MASK_PREFIX
+
+
+def _is_masked_key(api_key: str | None) -> bool:
+    """True when the value is empty or a masked hint echoed back by the UI —
+    i.e. the caller is not supplying a real, new key."""
+    return not api_key or api_key.startswith(_API_KEY_MASK_PREFIX)
+
 
 def _extract_json(raw: str) -> Any:
     """Extract a JSON object from an LLM response, tolerating prose/markdown around it."""
@@ -446,7 +466,13 @@ def quick_wins(db: Session = Depends(get_db), _=Depends(require_viewer)):
 @router.get("/config")
 def get_ai_config(db: Session = Depends(get_db), _=Depends(require_admin)):
     s = db.query(Setting).filter(Setting.key == "ai_config").first()
-    return s.value if s and s.value else _DEFAULT_AI_CONFIG
+    cfg = dict(s.value) if s and s.value else dict(_DEFAULT_AI_CONFIG)
+    # Never expose the stored API key in plaintext. Return a masked hint plus a
+    # boolean so the UI can show "a key is configured" without the secret.
+    stored_key = cfg.get("api_key") or ""
+    cfg["has_api_key"] = bool(stored_key)
+    cfg["api_key"] = _mask_api_key(stored_key)
+    return cfg
 
 
 @router.put("/config")
@@ -457,7 +483,10 @@ def update_ai_config(req: AIConfigUpdate, db: Session = Depends(get_db), _=Depen
         current["provider"] = req.provider
     if req.api_url is not None:
         current["api_url"] = req.api_url
-    if req.api_key is not None:
+    # Only overwrite the stored key when the UI submits a real, new value.
+    # An empty string or an echoed masked hint ("****abcd") means "unchanged",
+    # so we must not clobber the existing secret with it.
+    if req.api_key is not None and not _is_masked_key(req.api_key):
         current["api_key"] = req.api_key
     if req.model is not None:
         current["model"] = req.model
@@ -468,7 +497,12 @@ def update_ai_config(req: AIConfigUpdate, db: Session = Depends(get_db), _=Depen
         s.value = current
     db.commit()
     db.refresh(s)
-    return s.value
+    # Mirror GET /config: return the masked view, never the plaintext key.
+    result = dict(s.value)
+    stored_key = result.get("api_key") or ""
+    result["has_api_key"] = bool(stored_key)
+    result["api_key"] = _mask_api_key(stored_key)
+    return result
 
 
 @router.post("/health")
@@ -481,10 +515,18 @@ def ai_health(
     (the form on the Settings page) without persisting them — so the user
     can verify a config before saving it."""
     if overrides and (overrides.provider or overrides.api_url or overrides.api_key or overrides.model):
+        # The UI never sees the real key (GET /config masks it), so when the
+        # user tests an unchanged config the override key is empty or a masked
+        # hint. In that case fall back to the stored key instead of testing
+        # with a bogus value.
+        api_key = overrides.api_key
+        if _is_masked_key(api_key):
+            stored = db.query(Setting).filter(Setting.key == "ai_config").first()
+            api_key = (stored.value.get("api_key") if stored and stored.value else "") or ""
         config = {
             "provider": overrides.provider or "ollama",
             "api_url": overrides.api_url or "",
-            "api_key": overrides.api_key or "",
+            "api_key": api_key,
             "model": overrides.model or "",
         }
         conn = AIAnalysisConnector()
